@@ -4,7 +4,7 @@ import { useConfiguratorStore } from '../store/configuratorStore';
 import { formatPrice, priceIncl } from '../lib/pricing';
 import { getCompatibleProducts } from '../lib/compatibility';
 import { Plus, Minus, Trash2, Package, ChevronRight, X, ShoppingCart } from 'lucide-react';
-import VanVisualization from './VanVisualization';
+import LoadSpaceViewer from './LoadSpaceViewer';
 
 export default function Configurator() {
   const {
@@ -69,6 +69,10 @@ export default function Configurator() {
         </div>
       </div>
 
+      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <strong>Democonfigurator</strong> — producten, prijzen en 3D-modellen zijn voorbeeldgegevens. Geen bindende offerte.
+      </div>
+
       <div className="mb-8">
         <h3 className="text-sm font-semibold text-industrial-500 uppercase tracking-wider mb-3">Pakketten</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -91,7 +95,7 @@ export default function Configurator() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         <aside className="lg:col-span-3">
           <div className="card p-4 sticky top-24">
             <h3 className="font-semibold text-industrial-900 mb-3 flex items-center gap-2"><Package size={18} /> Categorieën</h3>
@@ -110,10 +114,11 @@ export default function Configurator() {
         </aside>
 
         <div className="lg:col-span-5 space-y-6">
-          <div className="card p-4">
-            <h3 className="font-semibold text-industrial-900 mb-3">Jouw laadruimte</h3>
-            <VanVisualization items={configuration.items} />
-          </div>
+          <LoadSpaceViewer
+            items={configuration.items}
+            vehicleVariantId={configuration.vehicleVariantId}
+            onRemoveProduct={removeProduct}
+          />
 
           {upsellProducts.length > 0 && (
             <div className="card p-4 border-brand-200 bg-brand-50/40">
