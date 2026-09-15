@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #1a1a1a;
+  background-color: #f8fafc;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply bg-white hover:bg-industrial-50 text-industrial-800 font-semibold py-3 px-6 rounded-lg border border-industrial-200 transition-all duration-200;
+  }
+  .btn-ghost {
+    @apply hover:bg-industrial-100 text-industrial-700 font-medium py-2 px-4 rounded-lg transition-colors;
+  }
+  .card {
+    @apply bg-white rounded-xl border border-industrial-100 shadow-sm;
+  }
+  .price-tag {
+    @apply text-brand-700 font-bold;
+  }
+}
