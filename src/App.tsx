@@ -5,6 +5,8 @@ import ProfessionSelector from './components/ProfessionSelector';
 import Configurator from './components/Configurator';
 import QuoteForm from './components/QuoteForm';
 import AdminPanel from './components/AdminPanel';
+import RecommendationView from './components/RecommendationView';
+import HelpWizard from './components/HelpWizard';
 import { useState } from 'react';
 
 function App() {
@@ -21,13 +23,15 @@ function App() {
       <main className="flex-1">
         {step === 'vehicle' && <VehicleSelector />}
         {step === 'profession' && <ProfessionSelector />}
+        {step === 'help' && <HelpWizard />}
+        {step === 'recommendation' && <RecommendationView />}
         {step === 'configurator' && <Configurator />}
         {step === 'quote' && <QuoteForm />}
       </main>
       <footer className="bg-industrial-900 text-industrial-300 py-8 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm">
           <p className="font-semibold text-white mb-1">Bedrijfswagen Inrichting Configurator</p>
-          <p>Demo versie · Prijzen zijn indicatief · Excl. eventuele transportkosten</p>
+          <p>Prijzen zijn indicatief (demo-catalogus) · Excl. eventuele transportkosten</p>
           <p className="mt-2 text-xs">© {new Date().getFullYear()} · Professionele bedrijfswageninrichtingen</p>
         </div>
       </footer>
