@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { formatPrice } from '../lib/pricing';
-import { CheckCircle, ArrowLeft, Info } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Info, FileText } from 'lucide-react';
 
 export default function QuoteForm() {
   const { getPricing, getVehicleLabel, getProfessionLabel, submitQuote, setStep, resetConfiguration } = useConfiguratorStore();
@@ -23,6 +23,47 @@ export default function QuoteForm() {
     setSubmitted(true);
   };
 
+  const downloadPdfSummary = () => {
+    const rows = pricing.items
+      .map(
+        (i) =>
+          `<tr><td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${i.qty}× ${i.name}</td><td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatPrice(i.lineTotal)}</td></tr>`
+      )
+      .join('');
+    const html = `<!DOCTYPE html><html lang="nl"><head><meta charset="utf-8"><title>Prijsindicatie ${quoteId || 'configuratie'}</title>
+<style>body{font-family:system-ui,sans-serif;max-width:720px;margin:24px auto;color:#0f172a;line-height:1.45}
+h1{font-size:1.35rem;margin:0 0 4px}h2{font-size:1rem;margin:20px 0 8px;color:#334155}
+table{width:100%;border-collapse:collapse;font-size:0.9rem}td{vertical-align:top}
+.muted{color:#64748b;font-size:0.85rem}.total{font-size:1.25rem;font-weight:700;color:#1d4ed8}
+.box{border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:12px 0;background:#f8fafc}
+.note{font-size:0.8rem;color:#64748b;margin-top:24px;border-top:1px solid #e2e8f0;padding-top:12px}</style></head><body>
+<h1>Prijsindicatie bedrijfswageninrichting</h1>
+<p class="muted">Referentie: ${quoteId || '—'} · ${new Date().toLocaleString('nl-NL')}</p>
+<div class="box">
+<p><strong>Voertuig:</strong> ${vehicleLabel}</p>
+${professionLabel ? `<p><strong>Gebruik:</strong> ${professionLabel}</p>` : ''}
+${form.company || form.firstName ? `<p><strong>Klant:</strong> ${[form.firstName, form.lastName].filter(Boolean).join(' ')}${form.company ? ` · ${form.company}` : ''}</p>` : ''}
+</div>
+<h2>Producten & montage</h2>
+<table><tbody>${rows}</tbody></table>
+<div class="box" style="margin-top:16px">
+<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Producten</span><span>${formatPrice(pricing.productSubtotal)}</span></div>
+<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Montage</span><span>${formatPrice(pricing.montageTotal)}</span></div>
+${pricing.packageDiscount > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Korting</span><span>-${formatPrice(pricing.packageDiscount)}</span></div>` : ''}
+<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Subtotaal excl. BTW</span><span>${formatPrice(pricing.subtotalExcl)}</span></div>
+<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>BTW 21%</span><span>${formatPrice(pricing.btwAmount)}</span></div>
+<div style="display:flex;justify-content:space-between;margin-top:8px" class="total"><span>Totaal incl. BTW</span><span>${formatPrice(pricing.totalIncl)}</span></div>
+</div>
+<p class="note">Dit is een prijsindicatie en geen definitieve overeenkomst. Definitieve prijs kan afhankelijk zijn van voertuigcontrole, beschikbaarheid en specifieke montagevereisten. Catalogus bevat demo-data.</p>
+<script>window.onload=function(){window.print()}</script>
+</body></html>`;
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+    }
+  };
+
   if (submitted) {
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
@@ -36,14 +77,19 @@ export default function QuoteForm() {
             <p><strong>Let op:</strong> er is nog geen backend gekoppeld. Deze aanvraag is <em>niet</em> automatisch naar het bedrijf verstuurd. Gebruik de admin (tandwiel) om lokaal opgeslagen leads te bekijken.</p>
           </div>
         </div>
-        <div className="card p-5 text-left mb-8">
+        <div className="card p-5 text-left mb-6">
           <p className="text-sm text-industrial-500 mb-1">Voertuig</p>
           <p className="font-semibold mb-3">{vehicleLabel}</p>
           <p className="text-sm text-industrial-500 mb-1">Indicatie totaal (snapshot)</p>
           <p className="text-2xl font-bold text-brand-700">{formatPrice(pricing.totalIncl)}</p>
           <p className="text-xs text-industrial-400 mt-1">incl. 21% BTW</p>
         </div>
-        <button onClick={resetConfiguration} className="btn-primary">Nieuwe configuratie starten</button>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+          <button onClick={downloadPdfSummary} className="btn-secondary inline-flex items-center justify-center gap-2">
+            <FileText size={18} /> PDF / print samenvatting
+          </button>
+          <button onClick={resetConfiguration} className="btn-primary">Nieuwe configuratie starten</button>
+        </div>
       </div>
     );
   }
