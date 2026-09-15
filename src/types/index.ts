@@ -3,6 +3,18 @@
 export type LengthCode = 'L1' | 'L2' | 'L3' | 'L4';
 export type HeightCode = 'H1' | 'H2' | 'H3';
 export type PositionCode = 'left' | 'right' | 'floor' | 'roof' | 'front' | 'rear' | 'any';
+export type Zone3D = 'leftWall' | 'rightWall' | 'frontWall' | 'floor' | 'ceiling' | 'roof' | 'any';
+
+/** Generic 3D representation — later replaceable by GLB/GLTF via modelUrl */
+export interface Visual3D {
+  type: 'cabinet' | 'drawerUnit' | 'workbench' | 'floor' | 'wallPanel' | 'partition' | 'rail' | 'led' | 'roofRack' | 'ladderHolder' | 'accessory' | 'none';
+  width?: number;
+  height?: number;
+  depth?: number;
+  zone: Zone3D;
+  modelUrl?: string;
+  isDemoAsset?: boolean;
+}
 
 export interface Vehicle {
   id: string;
@@ -67,6 +79,7 @@ export interface Product {
   tags: string[];
   recommendedForProfessions: string[];
   relatedProductIds: string[];
+  visual3D?: Visual3D;
   isDemo?: boolean;
 }
 
@@ -183,4 +196,11 @@ export interface RecommendationResult {
   title: string;
   rationale: string;
   estimatedExcl: number;
+}
+
+export interface CargoSpaceMeters {
+  length: number;
+  width: number;
+  height: number;
+  isDemo: boolean;
 }
