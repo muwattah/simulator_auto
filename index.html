@@ -1,14 +1,38 @@
 <!doctype html>
 <html lang="nl">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bedrijfswagen Configurator | Professionele Inrichting</title>
-    <meta name="description" content="Configureer je bedrijfswageninrichting online. Kies je voertuig, selecteer producten en krijg direct een prijsindicatie." />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bedrijfswagen Configurator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; color: #0f172a; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: white; border-radius: 16px; padding: 40px; max-width: 520px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    h1 { font-size: 1.5rem; margin-bottom: 8px; }
+    p { color: #475569; line-height: 1.6; margin-bottom: 16px; }
+    ol { margin: 16px 0 24px 20px; color: #334155; line-height: 1.8; }
+    a.btn { display: inline-block; background: #0070c4; color: white; text-decoration: none; padding: 14px 24px; border-radius: 10px; font-weight: 600; }
+    a.btn:hover { background: #0159a0; }
+    .note { font-size: 0.875rem; color: #64748b; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Bijna klaar</h1>
+    <p>De configurator is gebouwd en staat klaar. Er is nog <strong>één instelling</strong> nodig in GitHub zodat de site live gaat:</p>
+    <ol>
+      <li>Open de Pages-instellingen (link hieronder)</li>
+      <li>Bij <strong>Build and deployment → Source</strong> kies <strong>GitHub Actions</strong></li>
+      <li>Klaar — de pagina ververst zichzelf binnen een minuut</li>
+    </ol>
+    <a class="btn" href="https://github.com/muwattah/simulator_auto/settings/pages" target="_blank" rel="noopener">
+      Open Pages-instellingen →
+    </a>
+    <p class="note">
+      Repository: <code>muwattah/simulator_auto</code><br>
+      Na de wijziging is de app bereikbaar op deze URL.
+    </p>
+  </div>
+</body>
 </html>
