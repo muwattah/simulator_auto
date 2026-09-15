@@ -1,19 +1,40 @@
+/** DEMO_DATA marker: types are production-ready; data files may still contain DEMO placeholders */
+
+export type LengthCode = 'L1' | 'L2' | 'L3' | 'L4';
+export type HeightCode = 'H1' | 'H2' | 'H3';
+export type PositionCode = 'left' | 'right' | 'floor' | 'roof' | 'front' | 'rear' | 'any';
+
 export interface Vehicle {
   id: string;
   brand: string;
   model: string;
+  category: 'small' | 'medium' | 'large';
   image?: string;
+  isDemo?: boolean;
 }
 
 export interface VehicleVariant {
   id: string;
   vehicleId: string;
-  name: string; // e.g. "L2H1"
-  length: 'L1' | 'L2' | 'L3' | 'L4';
-  height: 'H1' | 'H2' | 'H3';
+  name: string;
+  length: LengthCode;
+  height: HeightCode;
   yearFrom?: number;
   yearTo?: number;
   description?: string;
+  loadLengthMm?: number;
+  loadWidthMm?: number;
+  loadHeightMm?: number;
+}
+
+export interface ProductCompatibility {
+  vehicleIds?: string[];
+  brandIds?: string[];
+  lengthCodes?: LengthCode[];
+  heightCodes?: HeightCode[];
+  categories?: Array<'small' | 'medium' | 'large'>;
+  maxLengthMm?: number;
+  maxHeightMm?: number;
 }
 
 export interface Category {
@@ -26,17 +47,27 @@ export interface Category {
 
 export interface Product {
   id: string;
+  sku: string;
   categoryId: string;
+  subcategory?: string;
   name: string;
   description: string;
-  dimensions?: string;
-  price: number; // excl BTW
-  montagePrice: number;
   image?: string;
+  dimensions?: string;
+  weightKg?: number;
+  price: number;
+  btwPercentage: number;
+  montagePrice: number;
+  montageHours?: number;
+  montageRequired?: boolean;
+  montageOptional?: boolean;
   active: boolean;
-  compatibleVariantIds: string[]; // empty = all
-  position?: 'left' | 'right' | 'floor' | 'roof' | 'front' | 'rear' | 'any';
-  popularFor?: string[]; // professions
+  compatibility: ProductCompatibility;
+  possiblePositions: PositionCode[];
+  tags: string[];
+  recommendedForProfessions: string[];
+  relatedProductIds: string[];
+  isDemo?: boolean;
 }
 
 export interface PackageItem {
@@ -48,17 +79,20 @@ export interface Package {
   id: string;
   name: string;
   description: string;
-  price: number; // fixed package price excl BTW, or 0 for sum
+  price: number;
   discountPercent?: number;
   items: PackageItem[];
   popularFor?: string[];
+  badge?: string;
   image?: string;
+  isDemo?: boolean;
 }
 
 export interface ConfigurationItem {
   productId: string;
   quantity: number;
-  position?: string;
+  position?: PositionCode;
+  includeMontage?: boolean;
 }
 
 export interface Configuration {
@@ -66,34 +100,31 @@ export interface Configuration {
   items: ConfigurationItem[];
   packageId?: string | null;
   profession?: string | null;
+  budgetBand?: string | null;
   includeBTW: boolean;
 }
 
 export interface Customer {
-  name: string;
+  firstName: string;
+  lastName: string;
   company?: string;
   email: string;
   phone: string;
   postcode: string;
+  vatNumber?: string;
   remarks?: string;
 }
 
-export interface Quote {
-  id: string;
-  createdAt: string;
-  customer: Customer;
-  configuration: Configuration;
-  vehicleLabel: string;
-  itemsDetail: { name: string; price: number; montage: number; qty: number }[];
-  subtotal: number;
-  montageTotal: number;
-  btw: number;
-  total: number;
-  status: 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
-}
-
-export interface PricingResult {
-  items: { productId: string; name: string; unitPrice: number; montage: number; qty: number; lineTotal: number }[];
+export interface QuotePriceSnapshot {
+  items: {
+    productId: string;
+    name: string;
+    sku: string;
+    unitPrice: number;
+    montage: number;
+    qty: number;
+    lineTotal: number;
+  }[];
   productSubtotal: number;
   montageTotal: number;
   packageDiscount: number;
@@ -101,4 +132,55 @@ export interface PricingResult {
   btwAmount: number;
   totalIncl: number;
   totalExcl: number;
+  btwRate: number;
+}
+
+export interface Quote {
+  id: string;
+  configurationId: string;
+  createdAt: string;
+  customer: Customer;
+  configuration: Configuration;
+  vehicleLabel: string;
+  professionLabel?: string;
+  priceSnapshot: QuotePriceSnapshot;
+  status: 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
+  storage: 'local';
+}
+
+export interface PricingResult {
+  items: {
+    productId: string;
+    name: string;
+    sku: string;
+    unitPrice: number;
+    montage: number;
+    qty: number;
+    lineTotal: number;
+    includeMontage: boolean;
+  }[];
+  productSubtotal: number;
+  montageTotal: number;
+  packageDiscount: number;
+  discount: number;
+  surcharge: number;
+  subtotalExcl: number;
+  btwAmount: number;
+  totalIncl: number;
+  totalExcl: number;
+  btwRate: number;
+}
+
+export interface RecommendationInput {
+  vehicleVariantId: string;
+  professionId: string;
+  budgetBand: 'under_1500' | '1500_2500' | '2500_4000' | 'over_4000';
+}
+
+export interface RecommendationResult {
+  packageId?: string;
+  productIds: string[];
+  title: string;
+  rationale: string;
+  estimatedExcl: number;
 }
