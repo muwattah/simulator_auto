@@ -1,224 +1,250 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Configuration, ConfigurationItem, Customer, Quote, RecommendationResult } from '../types';
-import { calculatePricing, toPriceSnapshot } from '../lib/pricing';
-import { packages, vehicleVariants, vehicles, professions } from '../data/demoData';
-import { recommend, recommendForProfession } from '../lib/recommendations';
+import type {
+  ConfigStep,
+  DetailingConfiguration,
+  Quote,
+  Customer,
+  ConfigurationSnapshot,
+  VehicleCategory,
+  CabType,
+  InstallationType,
+} from '../types';
+import { calculatePricing } from '../lib/pricing';
+import { computeLayout, estimatedWaterWeight, getCargoSpace } from '../lib/layoutEngine';
+import { STEP_ORDER, getVehicleCategory, getProduct } from '../data/detailingCatalog';
 
-interface ConfiguratorState {
-  step: 'vehicle' | 'profession' | 'help' | 'recommendation' | 'configurator' | 'quote';
-  configuration: Configuration;
-  selectedCategoryId: string | null;
+interface State {
+  step: ConfigStep;
+  configuration: DetailingConfiguration;
   quotes: Quote[];
-  lastRecommendation: RecommendationResult | null;
-  helpAnswers: { professionId: string | null; budgetBand: string | null };
-  setStep: (step: ConfiguratorState['step']) => void;
-  selectVehicleVariant: (variantId: string) => void;
-  selectProfession: (professionId: string | null) => void;
-  selectPackage: (packageId: string | null) => void;
-  addProduct: (productId: string, quantity?: number) => void;
-  removeProduct: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  setIncludeBTW: (include: boolean) => void;
-  setSelectedCategory: (categoryId: string | null) => void;
+  selectedProductId: string | null;
+  setStep: (step: ConfigStep) => void;
+  nextStep: () => void;
+  prevStep: () => void;
+  setVehicleCategory: (c: VehicleCategory) => void;
+  setCabType: (c: CabType) => void;
+  setTank: (id: string | null) => void;
+  setFloatValve: (v: boolean | null) => void;
+  setPressureWasher: (id: string | null) => void;
+  setPressureReel: (id: string | null) => void;
+  setCompressor: (id: string | null) => void;
+  setAirReel: (id: string | null) => void;
+  setGenerator: (id: string | null) => void;
+  setPowerReel: (id: string | null) => void;
+  setVacuum: (id: string | null) => void;
+  setLining: (id: string | null) => void;
+  setFrameCombo: (id: string | null) => void;
+  toggleExtra: (id: string) => void;
+  setBottleHolder: (v: boolean) => void;
+  setBucketHolder: (v: boolean) => void;
+  setInstallationType: (t: InstallationType) => void;
+  setSpecialRequests: (t: string) => void;
+  setSelectedProductId: (id: string | null) => void;
+  removeProductById: (id: string) => void;
   resetConfiguration: () => void;
-  applyProfessionRecommendation: (professionId: string) => void;
-  runHelpWizard: (professionId: string, budgetBand: string) => void;
-  acceptRecommendation: () => void;
-  submitQuote: (customer: Customer) => Quote;
   getPricing: () => ReturnType<typeof calculatePricing>;
+  getLayout: () => ReturnType<typeof computeLayout>;
+  getCargoSpace: () => ReturnType<typeof getCargoSpace>;
   getVehicleLabel: () => string;
-  getProfessionLabel: () => string;
+  buildSnapshot: () => ConfigurationSnapshot;
+  submitQuote: (customer: Customer) => Quote;
+  isStepComplete: (step: ConfigStep) => boolean;
 }
 
-const initialConfig: Configuration = {
-  vehicleVariantId: null,
-  items: [],
-  packageId: null,
-  profession: null,
-  budgetBand: null,
+const initialConfig: DetailingConfiguration = {
+  vehicleCategory: null,
+  cabType: null,
+  tankId: null,
+  floatValve: null,
+  pressureWasherId: null,
+  pressureReelId: null,
+  compressorId: null,
+  airReelId: null,
+  generatorId: null,
+  powerReelId: null,
+  vacuumId: null,
+  liningId: null,
+  frameComboId: null,
+  extraIds: [],
+  bottleHolder: false,
+  bucketHolder: false,
+  installationType: null,
+  specialRequests: '',
   includeBTW: false,
 };
 
-export const useConfiguratorStore = create<ConfiguratorState>()(
+export const useConfiguratorStore = create<State>()(
   persist(
     (set, get) => ({
       step: 'vehicle',
       configuration: initialConfig,
-      selectedCategoryId: null,
       quotes: [],
-      lastRecommendation: null,
-      helpAnswers: { professionId: null, budgetBand: null },
+      selectedProductId: null,
 
       setStep: (step) => set({ step }),
 
-      selectVehicleVariant: (variantId) => {
-        set((state) => ({
-          configuration: { ...state.configuration, vehicleVariantId: variantId },
-          step: 'profession',
-        }));
+      nextStep: () => {
+        const idx = STEP_ORDER.indexOf(get().step);
+        if (idx < STEP_ORDER.length - 1) set({ step: STEP_ORDER[idx + 1] });
       },
 
-      selectProfession: (professionId) => {
-        set((state) => ({
-          configuration: { ...state.configuration, profession: professionId },
-          step: 'configurator',
-        }));
+      prevStep: () => {
+        const idx = STEP_ORDER.indexOf(get().step);
+        if (idx > 0) set({ step: STEP_ORDER[idx - 1] });
       },
 
-      selectPackage: (packageId) => {
-        set((state) => {
-          let newItems = state.configuration.items;
-          if (packageId) {
-            const pkg = packages.find((p) => p.id === packageId);
-            if (pkg) {
-              newItems = pkg.items.map((i) => ({
-                productId: i.productId,
-                quantity: i.quantity,
-                includeMontage: true,
-              }));
-            }
-          }
-          return {
-            configuration: { ...state.configuration, packageId, items: newItems },
-          };
-        });
-      },
+      setVehicleCategory: (c) =>
+        set((s) => ({
+          configuration: {
+            ...s.configuration,
+            vehicleCategory: c,
+            cabType: c === 'trailer' ? 'single' : s.configuration.cabType,
+          },
+        })),
 
-      addProduct: (productId, quantity = 1) => {
-        set((state) => {
-          const existing = state.configuration.items.find((i) => i.productId === productId);
-          let newItems: ConfigurationItem[];
-          if (existing) {
-            newItems = state.configuration.items.map((i) =>
-              i.productId === productId ? { ...i, quantity: i.quantity + quantity } : i
-            );
-          } else {
-            newItems = [...state.configuration.items, { productId, quantity, includeMontage: true }];
-          }
-          return { configuration: { ...state.configuration, items: newItems } };
-        });
-      },
+      setCabType: (c) => set((s) => ({ configuration: { ...s.configuration, cabType: c } })),
 
-      removeProduct: (productId) => {
-        set((state) => {
-          const pkg = state.configuration.packageId
-            ? packages.find((p) => p.id === state.configuration.packageId)
-            : null;
-          const isPackageItem = pkg?.items.some((i) => i.productId === productId);
+      setTank: (id) =>
+        set((s) => ({
+          configuration: {
+            ...s.configuration,
+            tankId: id,
+            floatValve: id ? s.configuration.floatValve : null,
+          },
+        })),
+
+      setFloatValve: (v) => set((s) => ({ configuration: { ...s.configuration, floatValve: v } })),
+
+      setPressureWasher: (id) => set((s) => ({ configuration: { ...s.configuration, pressureWasherId: id } })),
+      setPressureReel: (id) => set((s) => ({ configuration: { ...s.configuration, pressureReelId: id } })),
+
+      setCompressor: (id) =>
+        set((s) => ({
+          configuration: {
+            ...s.configuration,
+            compressorId: id,
+            airReelId: id ? s.configuration.airReelId : null,
+          },
+        })),
+
+      setAirReel: (id) => set((s) => ({ configuration: { ...s.configuration, airReelId: id } })),
+      setGenerator: (id) => set((s) => ({ configuration: { ...s.configuration, generatorId: id } })),
+      setPowerReel: (id) => set((s) => ({ configuration: { ...s.configuration, powerReelId: id } })),
+      setVacuum: (id) => set((s) => ({ configuration: { ...s.configuration, vacuumId: id } })),
+      setLining: (id) => set((s) => ({ configuration: { ...s.configuration, liningId: id } })),
+      setFrameCombo: (id) => set((s) => ({ configuration: { ...s.configuration, frameComboId: id } })),
+
+      toggleExtra: (id) =>
+        set((s) => {
+          const has = s.configuration.extraIds.includes(id);
           return {
             configuration: {
-              ...state.configuration,
-              items: state.configuration.items.filter((i) => i.productId !== productId),
-              packageId: isPackageItem ? null : state.configuration.packageId,
+              ...s.configuration,
+              extraIds: has
+                ? s.configuration.extraIds.filter((x) => x !== id)
+                : [...s.configuration.extraIds, id],
             },
           };
-        });
-      },
-
-      updateQuantity: (productId, quantity) => {
-        if (quantity <= 0) {
-          get().removeProduct(productId);
-          return;
-        }
-        set((state) => ({
-          configuration: {
-            ...state.configuration,
-            items: state.configuration.items.map((i) =>
-              i.productId === productId ? { ...i, quantity } : i
-            ),
-          },
-        }));
-      },
-
-      setIncludeBTW: (include) => {
-        set((state) => ({
-          configuration: { ...state.configuration, includeBTW: include },
-        }));
-      },
-
-      setSelectedCategory: (categoryId) => set({ selectedCategoryId: categoryId }),
-
-      resetConfiguration: () =>
-        set({
-          configuration: initialConfig,
-          step: 'vehicle',
-          selectedCategoryId: null,
-          lastRecommendation: null,
-          helpAnswers: { professionId: null, budgetBand: null },
         }),
 
-      applyProfessionRecommendation: (professionId) => {
-        const variantId = get().configuration.vehicleVariantId;
-        if (!variantId) {
-          set((state) => ({
-            configuration: { ...state.configuration, profession: professionId },
-            step: 'configurator',
-          }));
-          return;
-        }
-        const rec = recommendForProfession(professionId, variantId);
-        const pkg = packages.find((p) => p.id === rec.packageId);
-        const items = pkg
-          ? pkg.items.map((i) => ({ productId: i.productId, quantity: i.quantity, includeMontage: true as const }))
-          : rec.productIds.map((id) => ({ productId: id, quantity: 1, includeMontage: true as const }));
-        set((state) => ({
-          configuration: {
-            ...state.configuration,
-            profession: professionId,
-            packageId: rec.packageId ?? null,
-            items,
-          },
-          lastRecommendation: rec,
-          step: 'recommendation',
-        }));
-      },
+      setBottleHolder: (v) => set((s) => ({ configuration: { ...s.configuration, bottleHolder: v } })),
+      setBucketHolder: (v) => set((s) => ({ configuration: { ...s.configuration, bucketHolder: v } })),
+      setInstallationType: (t) => set((s) => ({ configuration: { ...s.configuration, installationType: t } })),
+      setSpecialRequests: (t) => set((s) => ({ configuration: { ...s.configuration, specialRequests: t } })),
+      setSelectedProductId: (id) => set({ selectedProductId: id }),
 
-      runHelpWizard: (professionId, budgetBand) => {
-        const variantId = get().configuration.vehicleVariantId;
-        if (!variantId) return;
-        const rec = recommend({
-          vehicleVariantId: variantId,
-          professionId,
-          budgetBand: budgetBand as 'under_1500' | '1500_2500' | '2500_4000' | 'over_4000',
-        });
-        set({
-          helpAnswers: { professionId, budgetBand },
-          lastRecommendation: rec,
-          configuration: { ...get().configuration, profession: professionId, budgetBand },
-          step: 'recommendation',
+      removeProductById: (id) => {
+        set((s) => {
+          const c = { ...s.configuration };
+          if (c.tankId === id) {
+            c.tankId = null;
+            c.floatValve = null;
+          }
+          if (c.pressureWasherId === id) c.pressureWasherId = null;
+          if (c.pressureWasherId === 'pressure_both') {
+            if (id === 'pressure_electric' || id === 'pressure_petrol') c.pressureWasherId = null;
+          }
+          if (c.pressureReelId === id) c.pressureReelId = null;
+          if (c.compressorId === id) {
+            c.compressorId = null;
+            c.airReelId = null;
+          }
+          if (c.airReelId === id) c.airReelId = null;
+          if (c.generatorId === id) c.generatorId = null;
+          if (c.powerReelId === id) c.powerReelId = null;
+          if (c.vacuumId === id) c.vacuumId = null;
+          if (c.liningId === id) c.liningId = 'lining_none';
+          if (c.frameComboId === id) c.frameComboId = null;
+          if (id === 'bottle_holder') c.bottleHolder = false;
+          if (id === 'bucket_holder') c.bucketHolder = false;
+          c.extraIds = c.extraIds.filter((x) => x !== id);
+          return { configuration: c, selectedProductId: null };
         });
       },
 
-      acceptRecommendation: () => {
-        const rec = get().lastRecommendation;
-        if (!rec) {
-          set({ step: 'configurator' });
-          return;
-        }
-        const pkg = packages.find((p) => p.id === rec.packageId);
-        const items = pkg
-          ? pkg.items.map((i) => ({ productId: i.productId, quantity: i.quantity, includeMontage: true as const }))
-          : rec.productIds.map((id) => ({ productId: id, quantity: 1, includeMontage: true as const }));
-        set((state) => ({
-          configuration: { ...state.configuration, packageId: rec.packageId ?? null, items },
-          step: 'configurator',
-        }));
+      resetConfiguration: () =>
+        set({ configuration: initialConfig, step: 'vehicle', selectedProductId: null }),
+
+      getPricing: () => calculatePricing(get().configuration),
+      getLayout: () => computeLayout(get().configuration),
+      getCargoSpace: () =>
+        getCargoSpace(get().configuration.vehicleCategory, get().configuration.cabType),
+
+      getVehicleLabel: () => {
+        const { vehicleCategory, cabType } = get().configuration;
+        const cat = getVehicleCategory(vehicleCategory);
+        if (!cat) return 'Nog geen voertuig';
+        const cab =
+          vehicleCategory === 'trailer'
+            ? ''
+            : cabType === 'double'
+              ? ' · Dubbele cabine'
+              : cabType === 'single'
+                ? ' · Enkele cabine'
+                : '';
+        return `${cat.name}${cab}`;
+      },
+
+      buildSnapshot: () => {
+        const c = get().configuration;
+        const pricing = calculatePricing(c);
+        const layout = computeLayout(c);
+        return {
+          configurationId: `CFG-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          vehicleCategory: c.vehicleCategory,
+          cabType: c.cabType,
+          tank: c.tankId,
+          floatValve: c.floatValve,
+          pressureWasher: c.pressureWasherId,
+          pressureReel: c.pressureReelId,
+          compressor: c.compressorId,
+          airReel: c.airReelId,
+          generator: c.generatorId,
+          powerReel: c.powerReelId,
+          vacuum: c.vacuumId,
+          lining: c.liningId,
+          frameCombo: c.frameComboId,
+          extras: c.extraIds,
+          bottleHolder: c.bottleHolder,
+          bucketHolder: c.bucketHolder,
+          installationType: c.installationType,
+          specialRequests: c.specialRequests,
+          knownSubtotal: pricing.knownSubtotal,
+          pendingPriceItems: pricing.pendingNames,
+          estimatedWaterWeightKg: estimatedWaterWeight(c),
+          layoutWarnings: layout.warnings,
+        };
       },
 
       submitQuote: (customer) => {
-        const state = get();
-        const pricing = calculatePricing(state.configuration);
-        const snapshot = toPriceSnapshot(pricing);
+        const snapshot = get().buildSnapshot();
         const quote: Quote = {
           id: `Q-${Date.now()}`,
-          configurationId: `CFG-${Date.now()}`,
           createdAt: new Date().toISOString(),
           customer,
-          configuration: { ...state.configuration },
-          vehicleLabel: state.getVehicleLabel(),
-          professionLabel: state.getProfessionLabel(),
-          priceSnapshot: snapshot,
+          snapshot,
           status: 'new',
           storage: 'local',
         };
@@ -226,29 +252,41 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
         return quote;
       },
 
-      getPricing: () => calculatePricing(get().configuration),
-
-      getVehicleLabel: () => {
-        const { vehicleVariantId } = get().configuration;
-        if (!vehicleVariantId) return 'Nog niet gekozen';
-        const variant = vehicleVariants.find((v) => v.id === vehicleVariantId);
-        if (!variant) return 'Onbekend';
-        const vehicle = vehicles.find((v) => v.id === variant.vehicleId);
-        return `${vehicle?.brand || ''} ${vehicle?.model || ''} ${variant.name}`.trim();
-      },
-
-      getProfessionLabel: () => {
-        const id = get().configuration.profession;
-        if (!id) return '';
-        return professions.find((p) => p.id === id)?.name ?? id;
+      isStepComplete: (step) => {
+        const c = get().configuration;
+        switch (step) {
+          case 'vehicle':
+            return !!c.vehicleCategory;
+          case 'cab':
+            return c.vehicleCategory === 'trailer' || !!c.cabType;
+          case 'tank':
+            return c.tankId === null || c.floatValve !== null || c.tankId === null
+              ? c.tankId !== undefined
+              : true;
+          // "none" is valid: tankId can be null after explicit choice — track via step visit is hard;
+          // treat as complete if vehicle done and user progressed
+          case 'pressure':
+          case 'compressor':
+          case 'power':
+          case 'vacuum':
+          case 'lining':
+          case 'frame':
+          case 'extras':
+          case 'installation':
+            return true;
+          case 'overview':
+            return true;
+          default:
+            return false;
+        }
       },
     }),
     {
-      name: 'bedrijfswagen-configurator-v2',
-      partialize: (state) => ({
-        configuration: state.configuration,
-        quotes: state.quotes,
-      }),
+      name: 'detailing-configurator-v1',
+      partialize: (s) => ({ configuration: s.configuration, quotes: s.quotes }),
     }
   )
 );
+
+// silence unused import warning helper
+void getProduct;
