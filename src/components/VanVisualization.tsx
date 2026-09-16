@@ -1,46 +1,51 @@
-import type { ConfigurationItem } from '../types';
-import { products } from '../data/demoData';
+/** Simple 2D fallback schematic for detailing unit */
+import { useConfiguratorStore } from '../store/configuratorStore';
+import { getProduct } from '../data/detailingCatalog';
 
-interface Props {
-  items: ConfigurationItem[];
-}
+export default function VanVisualization() {
+  const configuration = useConfiguratorStore((s) => s.configuration);
+  const layout = useConfiguratorStore((s) => s.getLayout());
 
-export default function VanVisualization({ items }: Props) {
-  const positions = { floor: false, left: false, right: false, roof: false, front: false, any: false };
-  for (const item of items) {
-    const p = products.find((pr) => pr.id === item.productId);
-    if (!p) continue;
-    for (const pos of p.possiblePositions) {
-      if (pos === 'any') positions.any = true;
-      else if (pos in positions) (positions as Record<string, boolean>)[pos] = true;
-    }
-  }
+  const labels = layout.placements.map((p) => getProduct(p.productId)?.name).filter(Boolean);
+
   return (
-    <div className="relative w-full aspect-[16/10] bg-gradient-to-b from-industrial-100 to-industrial-200 rounded-lg overflow-hidden border border-industrial-200">
-      <svg viewBox="0 0 400 250" className="w-full h-full">
-        <rect x="40" y="40" width="320" height="170" rx="12" fill="#e2e8f0" stroke="#64748b" strokeWidth="3" />
-        <rect x="40" y="40" width="70" height="170" rx="8" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
-        <text x="75" y="130" textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="600">CABINE</text>
-        <rect x="110" y="50" width="240" height="150" rx="4" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="1.5" />
-        {positions.floor && <rect x="115" y="175" width="230" height="20" fill="#92400e" opacity="0.75" rx="2" />}
-        <text x="230" y="188" textAnchor="middle" fontSize="9" fill={positions.floor ? '#fff' : '#94a3b8'}>{positions.floor ? 'VLOER ✓' : 'VLOER'}</text>
-        {positions.left && <rect x="115" y="55" width="40" height="115" fill="#0369a1" opacity="0.85" rx="3" />}
-        <text x="135" y="120" textAnchor="middle" fontSize="9" fill={positions.left ? '#fff' : '#94a3b8'} transform="rotate(-90 135 120)">{positions.left ? 'LINKS ✓' : 'LINKS'}</text>
-        {positions.right && <rect x="305" y="55" width="40" height="115" fill="#0369a1" opacity="0.85" rx="3" />}
-        <text x="325" y="120" textAnchor="middle" fontSize="9" fill={positions.right ? '#fff' : '#94a3b8'} transform="rotate(90 325 120)">{positions.right ? 'RECHTS ✓' : 'RECHTS'}</text>
-        {positions.front && <rect x="115" y="55" width="230" height="18" fill="#475569" opacity="0.85" rx="2" />}
-        <text x="230" y="68" textAnchor="middle" fontSize="9" fill={positions.front ? '#fff' : '#94a3b8'}>{positions.front ? 'SCHEIDINGSWAND ✓' : 'VOORZIJDE'}</text>
-        {positions.roof && <rect x="150" y="25" width="160" height="12" fill="#0f766e" opacity="0.9" rx="2" />}
-        <text x="230" y="34" textAnchor="middle" fontSize="9" fill={positions.roof ? '#fff' : '#94a3b8'}>{positions.roof ? 'DAK ✓' : 'DAK'}</text>
-        {positions.any && <text x="230" y="125" textAnchor="middle" fontSize="10" fill="#7c3aed" fontWeight="600">+ accessoires</text>}
-      </svg>
-      <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-2 justify-center">
-        {items.length === 0 ? (
-          <span className="text-xs bg-white/80 px-2 py-1 rounded text-industrial-500">Voeg producten toe om ze hier te zien</span>
-        ) : (
-          <span className="text-xs bg-white/90 px-2 py-1 rounded text-industrial-700 font-medium">{items.length} product{items.length !== 1 ? 'en' : ''} in configuratie</span>
-        )}
+    <div className="w-full max-w-md mx-auto">
+      <div className="relative border-2 border-industrial-300 rounded-lg bg-industrial-50 aspect-[4/3] p-3">
+        <div className="absolute top-1 left-1/2 -translate-x-1/2 text-[10px] text-industrial-400">VOOR</div>
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-industrial-400">ACHTER</div>
+        <div className="h-full flex flex-col justify-end gap-1">
+          {configuration.tankId && (
+            <div className="mx-auto w-2/5 h-10 bg-blue-800/80 rounded text-white text-[10px] flex items-center justify-center">
+              Tank
+            </div>
+          )}
+          <div className="flex justify-center gap-1 flex-wrap">
+            {layout.placements
+              .filter((p) => getProduct(p.productId)?.visual3D.type === 'hoseReel')
+              .map((p) => (
+                <div key={p.productId} className="w-8 h-8 rounded-full border-2 border-brand-600 bg-brand-100" title={getProduct(p.productId)?.name} />
+              ))}
+          </div>
+          <div className="flex justify-between px-2">
+            {configuration.compressorId && (
+              <div className="w-12 h-8 bg-industrial-400 rounded text-[9px] text-white flex items-center justify-center">CMP</div>
+            )}
+            {configuration.generatorId && (
+              <div className="w-12 h-8 bg-industrial-600 rounded text-[9px] text-white flex items-center justify-center">GEN</div>
+            )}
+          </div>
+          {configuration.frameComboId && (
+            <div className="h-3 border border-dashed border-industrial-400 mx-4" />
+          )}
+        </div>
       </div>
+      {labels.length > 0 && (
+        <ul className="mt-2 text-xs text-industrial-600 space-y-0.5">
+          {labels.slice(0, 8).map((l, i) => (
+            <li key={i}>• {l}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
