@@ -19,9 +19,11 @@ interface State {
   configuration: DetailingConfiguration;
   quotes: Quote[];
   selectedProductId: string | null;
+  visitedSteps: ConfigStep[];
   setStep: (step: ConfigStep) => void;
   nextStep: () => void;
   prevStep: () => void;
+  markVisited: (step: ConfigStep) => void;
   setVehicleCategory: (c: VehicleCategory) => void;
   setCabType: (c: CabType) => void;
   setTank: (id: string | null) => void;
@@ -81,6 +83,7 @@ export const useConfiguratorStore = create<State>()(
       configuration: initialConfig,
       quotes: [],
       selectedProductId: null,
+      visitedSteps: [],
 
       setStep: (step) => set({ step }),
 
@@ -93,6 +96,11 @@ export const useConfiguratorStore = create<State>()(
         const idx = STEP_ORDER.indexOf(get().step);
         if (idx > 0) set({ step: STEP_ORDER[idx - 1] });
       },
+
+      markVisited: (step) =>
+        set((s) => ({
+          visitedSteps: s.visitedSteps.includes(step) ? s.visitedSteps : [...s.visitedSteps, step],
+        })),
 
       setVehicleCategory: (c) =>
         set((s) => ({
@@ -184,7 +192,7 @@ export const useConfiguratorStore = create<State>()(
       },
 
       resetConfiguration: () =>
-        set({ configuration: initialConfig, step: 'vehicle', selectedProductId: null }),
+        set({ configuration: initialConfig, step: 'vehicle', selectedProductId: null, visitedSteps: [] }),
 
       getPricing: () => calculatePricing(get().configuration),
       getLayout: () => computeLayout(get().configuration),
@@ -253,40 +261,18 @@ export const useConfiguratorStore = create<State>()(
       },
 
       isStepComplete: (step) => {
-        const c = get().configuration;
-        switch (step) {
-          case 'vehicle':
-            return !!c.vehicleCategory;
-          case 'cab':
-            return c.vehicleCategory === 'trailer' || !!c.cabType;
-          case 'tank':
-            return c.tankId === null || c.floatValve !== null || c.tankId === null
-              ? c.tankId !== undefined
-              : true;
-          // "none" is valid: tankId can be null after explicit choice — track via step visit is hard;
-          // treat as complete if vehicle done and user progressed
-          case 'pressure':
-          case 'compressor':
-          case 'power':
-          case 'vacuum':
-          case 'lining':
-          case 'frame':
-          case 'extras':
-          case 'installation':
-            return true;
-          case 'overview':
-            return true;
-          default:
-            return false;
-        }
+        return get().visitedSteps.includes(step);
       },
     }),
     {
       name: 'detailing-configurator-v1',
-      partialize: (s) => ({ configuration: s.configuration, quotes: s.quotes }),
+      partialize: (s) => ({
+        configuration: s.configuration,
+        quotes: s.quotes,
+        visitedSteps: s.visitedSteps,
+      }),
     }
   )
 );
 
-// silence unused import warning helper
 void getProduct;
