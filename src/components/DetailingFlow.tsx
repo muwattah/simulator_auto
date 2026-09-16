@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import {
   vehicleCategories,
@@ -30,7 +31,6 @@ import {
   Wind,
   Package,
 } from 'lucide-react';
-import type { ConfigStep } from '../types';
 
 function OptionCard({
   selected,
@@ -43,7 +43,7 @@ function OptionCard({
   onClick: () => void;
   title: string;
   subtitle?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <button
@@ -73,13 +73,12 @@ function ProgressBar() {
   const step = useConfiguratorStore((s) => s.step);
   const setStep = useConfiguratorStore((s) => s.setStep);
   const configuration = useConfiguratorStore((s) => s.configuration);
-
   const compact = STEP_ORDER.filter((s) => s !== 'cab' || configuration.vehicleCategory !== 'trailer');
 
   return (
     <div className="overflow-x-auto pb-1">
       <div className="flex items-center gap-1 min-w-max">
-        {compact.map((s, i) => {
+        {compact.map((s) => {
           const idx = STEP_ORDER.indexOf(s);
           const currentIdx = STEP_ORDER.indexOf(step);
           const done = idx < currentIdx;
@@ -108,19 +107,18 @@ function ProgressBar() {
 
 function Checklist() {
   const c = useConfiguratorStore((s) => s.configuration);
+  const visited = useConfiguratorStore((s) => s.visitedSteps);
   const items: { label: string; ok: boolean }[] = [
     { label: 'VOERTUIG', ok: !!c.vehicleCategory },
     { label: 'CABINE', ok: c.vehicleCategory === 'trailer' || !!c.cabType },
-    { label: 'WATER', ok: c.tankId !== undefined && (c.tankId === null || c.floatValve !== null || !c.tankId) },
-    { label: 'HOGEDRUK', ok: true },
-    { label: 'LUCHT', ok: true },
-    { label: 'STROOM', ok: true },
-    { label: 'STOFZUIGING', ok: true },
-    { label: 'FRAME', ok: !!c.frameComboId },
-    { label: "EXTRA'S", ok: true },
+    { label: 'WATER', ok: visited.includes('tank') },
+    { label: 'HOGEDRUK', ok: visited.includes('pressure') },
+    { label: 'LUCHT', ok: visited.includes('compressor') },
+    { label: 'STROOM', ok: visited.includes('power') },
+    { label: 'STOFZUIGING', ok: visited.includes('vacuum') },
+    { label: 'FRAME', ok: !!c.frameComboId || visited.includes('frame') },
+    { label: "EXTRA'S", ok: visited.includes('extras') },
   ];
-  // Simplify: mark based on whether user has made explicit choices where required
-  items[2].ok = c.vehicleCategory ? true : false;
 
   return (
     <div className="flex flex-wrap gap-1.5 text-[10px]">
@@ -202,11 +200,7 @@ function ConfigSummary() {
                 <p className="text-industrial-800 truncate">{r.value}</p>
               </div>
               {r.id && (
-                <button
-                  type="button"
-                  className="text-xs text-red-500 shrink-0"
-                  onClick={() => removeProductById(r.id!)}
-                >
+                <button type="button" className="text-xs text-red-500 shrink-0" onClick={() => removeProductById(r.id!)}>
                   ×
                 </button>
               )}
@@ -218,20 +212,24 @@ function ConfigSummary() {
         <p className="text-xs text-industrial-500 mt-3">
           Geschat watergewicht: ±{water} kg
           <span className="block text-[10px] mt-0.5">
-            Alleen watergewicht — geen voertuigpayload-validatie.
+            Geschat gewicht van het water; voertuigbelasting en toegestane massa moeten afzonderlijk gecontroleerd worden.
           </span>
         </p>
       )}
       <div className="border-t border-industrial-100 mt-3 pt-3 text-sm">
-        {pricing.hasPending ? (
+        {pricing.items.length === 0 ? (
+          <p className="text-industrial-500 text-xs">Geen prijzen — nog geen onderdelen</p>
+        ) : pricing.hasPending ? (
           <>
-            <p className="text-industrial-600">
-              Bekend subtotaal:{' '}
-              <span className="font-semibold">{pricing.knownSubtotal > 0 ? formatPriceOrPending(pricing.knownSubtotal) : '—'}</span>
+            {pricing.knownSubtotal > 0 && (
+              <p className="text-industrial-600">
+                Bekend subtotaal: <span className="font-semibold">{formatPriceOrPending(pricing.knownSubtotal)}</span>
+              </p>
+            )}
+            <p className="text-amber-700 text-xs mt-1 font-medium">
+              {pricing.pendingCount} onderdeel{pricing.pendingCount !== 1 ? 'en' : ''} — prijs op aanvraag
             </p>
-            <p className="text-amber-700 text-xs mt-1">
-              + {pricing.pendingCount} onderdeel{pricing.pendingCount !== 1 ? 'en' : ''} prijs op aanvraag
-            </p>
+            <p className="text-[10px] text-industrial-400 mt-1">Nog geen definitief totaal</p>
           </>
         ) : (
           <p className="font-bold text-brand-700">{formatPriceOrPending(pricing.knownSubtotal)}</p>
@@ -244,6 +242,7 @@ function ConfigSummary() {
 function StepContent() {
   const step = useConfiguratorStore((s) => s.step);
   const c = useConfiguratorStore((s) => s.configuration);
+  const markVisited = useConfiguratorStore((s) => s.markVisited);
   const {
     setVehicleCategory,
     setCabType,
@@ -276,7 +275,7 @@ function StepContent() {
             <OptionCard
               key={v.id}
               selected={c.vehicleCategory === v.id}
-              onClick={() => setVehicleCategory(v.id)}
+              onClick={() => { setVehicleCategory(v.id); markVisited('vehicle'); }}
               title={v.name}
               subtitle={v.description}
             >
@@ -302,8 +301,8 @@ function StepContent() {
         <h2 className="text-lg font-bold text-industrial-900">Welke cabine heeft het voertuig?</h2>
         <p className="text-sm text-industrial-500">Dubbele cabine = minder laadlengte in de 3D-simulatie (demo-afmetingen).</p>
         <div className="grid sm:grid-cols-2 gap-3">
-          <OptionCard selected={c.cabType === 'single'} onClick={() => setCabType('single')} title="Enkele cabine" subtitle="Maximale laadlengte" />
-          <OptionCard selected={c.cabType === 'double'} onClick={() => setCabType('double')} title="Dubbele cabine" subtitle="Kortere laadruimte" />
+          <OptionCard selected={c.cabType === 'single'} onClick={() => { setCabType('single'); markVisited('cab'); }} title="Enkele cabine" subtitle="Maximale laadlengte" />
+          <OptionCard selected={c.cabType === 'double'} onClick={() => { setCabType('double'); markVisited('cab'); }} title="Dubbele cabine" subtitle="Kortere laadruimte" />
         </div>
       </div>
     );
@@ -320,7 +319,7 @@ function StepContent() {
             <OptionCard
               key={String(o.id)}
               selected={c.tankId === o.id}
-              onClick={() => setTank(o.id)}
+              onClick={() => { setTank(o.id); markVisited('tank'); }}
               title={o.label}
             />
           ))}
@@ -344,13 +343,13 @@ function StepContent() {
         <h2 className="text-lg font-bold">Hogedrukoplossing</h2>
         <div className="grid sm:grid-cols-2 gap-2">
           {pressureOptions.map((o) => (
-            <OptionCard key={String(o.id)} selected={c.pressureWasherId === o.id} onClick={() => setPressureWasher(o.id)} title={o.label} />
+            <OptionCard key={String(o.id)} selected={c.pressureWasherId === o.id} onClick={() => { setPressureWasher(o.id); markVisited('pressure'); }} title={o.label} />
           ))}
         </div>
         <h3 className="font-semibold">Hogedrukhaspel — 200 bar</h3>
         <div className="grid sm:grid-cols-2 gap-2">
           {pressureReelOptions.map((o) => (
-            <OptionCard key={String(o.id)} selected={c.pressureReelId === o.id} onClick={() => setPressureReel(o.id)} title={o.label} />
+            <OptionCard key={String(o.id)} selected={c.pressureReelId === o.id} onClick={() => { setPressureReel(o.id); markVisited('pressure'); }} title={o.label} />
           ))}
         </div>
       </div>
@@ -365,7 +364,7 @@ function StepContent() {
         </h2>
         <div className="grid sm:grid-cols-2 gap-2">
           {compressorOptions.map((o) => (
-            <OptionCard key={String(o.id)} selected={c.compressorId === o.id} onClick={() => setCompressor(o.id)} title={o.label} />
+            <OptionCard key={String(o.id)} selected={c.compressorId === o.id} onClick={() => { setCompressor(o.id); markVisited('compressor'); }} title={o.label} />
           ))}
         </div>
         {c.compressorId && (
@@ -390,13 +389,13 @@ function StepContent() {
         </h2>
         <div className="grid sm:grid-cols-2 gap-2">
           {generatorOptions.map((o) => (
-            <OptionCard key={String(o.id)} selected={c.generatorId === o.id} onClick={() => setGenerator(o.id)} title={o.label} />
+            <OptionCard key={String(o.id)} selected={c.generatorId === o.id} onClick={() => { setGenerator(o.id); markVisited('power'); }} title={o.label} />
           ))}
         </div>
         <h3 className="font-semibold">Stroomhaspel</h3>
         <div className="grid sm:grid-cols-2 gap-2">
           {powerReelOptions.map((o) => (
-            <OptionCard key={String(o.id)} selected={c.powerReelId === o.id} onClick={() => setPowerReel(o.id)} title={o.label} />
+            <OptionCard key={String(o.id)} selected={c.powerReelId === o.id} onClick={() => { setPowerReel(o.id); markVisited('power'); }} title={o.label} />
           ))}
         </div>
       </div>
@@ -409,7 +408,7 @@ function StepContent() {
         <h2 className="text-lg font-bold">Stofzuiger</h2>
         <div className="grid sm:grid-cols-1 gap-2">
           {vacuumOptions.map((o) => (
-            <OptionCard key={String(o.id)} selected={c.vacuumId === o.id} onClick={() => setVacuum(o.id)} title={o.label} />
+            <OptionCard key={String(o.id)} selected={c.vacuumId === o.id} onClick={() => { setVacuum(o.id); markVisited('vacuum'); }} title={o.label} />
           ))}
         </div>
       </div>
@@ -422,7 +421,7 @@ function StepContent() {
         <h2 className="text-lg font-bold">Laadruimtebekleding</h2>
         <div className="grid sm:grid-cols-1 gap-2">
           {liningOptions.map((o) => (
-            <OptionCard key={o.id} selected={c.liningId === o.id} onClick={() => setLining(o.id)} title={o.label} />
+            <OptionCard key={o.id} selected={c.liningId === o.id} onClick={() => { setLining(o.id); markVisited('lining'); }} title={o.label} />
           ))}
         </div>
       </div>
@@ -435,7 +434,7 @@ function StepContent() {
         <h2 className="text-lg font-bold">Frame-opstelling</h2>
         <div className="grid gap-2">
           {frameOptions.map((o) => (
-            <OptionCard key={o.id} selected={c.frameComboId === o.id} onClick={() => setFrameCombo(o.id)} title={o.label} />
+            <OptionCard key={o.id} selected={c.frameComboId === o.id} onClick={() => { setFrameCombo(o.id); markVisited('frame'); }} title={o.label} />
           ))}
         </div>
       </div>
@@ -447,18 +446,13 @@ function StepContent() {
       <div className="space-y-4">
         <h2 className="text-lg font-bold">Extra's</h2>
         <div className="grid sm:grid-cols-2 gap-2">
-          <OptionCard selected={c.bottleHolder} onClick={() => setBottleHolder(!c.bottleHolder)} title="Bottle holder set" />
-          <OptionCard selected={c.bucketHolder} onClick={() => setBucketHolder(!c.bucketHolder)} title="Bucket holder set" />
+          <OptionCard selected={c.bottleHolder} onClick={() => { setBottleHolder(!c.bottleHolder); markVisited('extras'); }} title="Bottle holder set" />
+          <OptionCard selected={c.bucketHolder} onClick={() => { setBucketHolder(!c.bucketHolder); markVisited('extras'); }} title="Bucket holder set" />
         </div>
         <h3 className="font-semibold">Extra apparatuur</h3>
         <div className="grid sm:grid-cols-2 gap-2">
           {extraOptions.map((o) => (
-            <OptionCard
-              key={o.id}
-              selected={c.extraIds.includes(o.id)}
-              onClick={() => toggleExtra(o.id)}
-              title={o.label}
-            />
+            <OptionCard key={o.id} selected={c.extraIds.includes(o.id)} onClick={() => { toggleExtra(o.id); markVisited('extras'); }} title={o.label} />
           ))}
         </div>
       </div>
@@ -470,18 +464,8 @@ function StepContent() {
       <div className="space-y-4">
         <h2 className="text-lg font-bold">Hoe wil je het pakket ontvangen?</h2>
         <div className="grid sm:grid-cols-2 gap-3">
-          <OptionCard
-            selected={c.installationType === 'installed'}
-            onClick={() => setInstallationType('installed')}
-            title="Door ons geïnstalleerd"
-            subtitle="Prijs installatie later"
-          />
-          <OptionCard
-            selected={c.installationType === 'pickup'}
-            onClick={() => setInstallationType('pickup')}
-            title="Ophaalpakket"
-            subtitle="Zelf monteren"
-          />
+          <OptionCard selected={c.installationType === 'installed'} onClick={() => { setInstallationType('installed'); markVisited('installation'); }} title="Door ons geïnstalleerd" subtitle="Prijs installatie later" />
+          <OptionCard selected={c.installationType === 'pickup'} onClick={() => { setInstallationType('pickup'); markVisited('installation'); }} title="Ophaalpakket" subtitle="Zelf monteren" />
         </div>
         <div>
           <label className="font-semibold text-sm block mb-1">Opmerkingen / speciale wensen</label>
@@ -496,37 +480,21 @@ function StepContent() {
     );
   }
 
-  // overview
   const snap = useConfiguratorStore.getState().buildSnapshot();
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold">Overzicht configuratie</h2>
       <div className="card p-4 text-sm space-y-1">
-        <p>
-          <strong>Voertuig:</strong> {useConfiguratorStore.getState().getVehicleLabel()}
-        </p>
-        <p>
-          <strong>Onderdelen:</strong> {snap.pendingPriceItems.length + (snap.knownSubtotal > 0 ? 1 : 0)} geselecteerd
-        </p>
-        <p>
-          <strong>Watergewicht:</strong> ±{snap.estimatedWaterWeightKg} kg
-        </p>
+        <p><strong>Voertuig:</strong> {useConfiguratorStore.getState().getVehicleLabel()}</p>
+        <p><strong>Onderdelen:</strong> {snap.pendingPriceItems.length} geselecteerd (prijzen op aanvraag)</p>
+        <p><strong>Watergewicht:</strong> ±{snap.estimatedWaterWeightKg} kg</p>
+        <p className="text-[10px] text-industrial-400">Geschat gewicht van het water; voertuigbelasting en toegestane massa moeten afzonderlijk gecontroleerd worden.</p>
         {snap.layoutWarnings.length > 0 && (
-          <div className="text-amber-700 text-xs mt-2">
-            {snap.layoutWarnings.map((w, i) => (
-              <p key={i}>{w}</p>
-            ))}
-          </div>
+          <div className="text-amber-700 text-xs mt-2">{snap.layoutWarnings.map((w, i) => <p key={i}>{w}</p>)}</div>
         )}
-        {snap.specialRequests && (
-          <p className="mt-2">
-            <strong>Wensen:</strong> {snap.specialRequests}
-          </p>
-        )}
+        {snap.specialRequests && <p className="mt-2"><strong>Wensen:</strong> {snap.specialRequests}</p>}
       </div>
-      <p className="text-xs text-industrial-500">
-        Prijzen worden later aangevuld. Deze configuratie kun je opslaan via lokale browser-opslag (snapshot).
-      </p>
+      <p className="text-xs text-industrial-500">Prijzen worden later aangevuld. Configuratie wordt lokaal in de browser bewaard.</p>
     </div>
   );
 }
@@ -535,6 +503,7 @@ export default function DetailingFlow() {
   const step = useConfiguratorStore((s) => s.step);
   const nextStep = useConfiguratorStore((s) => s.nextStep);
   const prevStep = useConfiguratorStore((s) => s.prevStep);
+  const markVisited = useConfiguratorStore((s) => s.markVisited);
   const configuration = useConfiguratorStore((s) => s.configuration);
 
   const canNext = (() => {
@@ -543,6 +512,11 @@ export default function DetailingFlow() {
     return true;
   })();
 
+  const handleNext = () => {
+    markVisited(step);
+    nextStep();
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 pb-28 lg:pb-6">
       {DEMO_MODE && (
@@ -550,11 +524,7 @@ export default function DetailingFlow() {
           <strong>Demoversie</strong> — productgegevens en prijzen worden nog aangevuld. Geen bindende offerte.
         </div>
       )}
-
-      <div className="mb-4">
-        <ProgressBar />
-      </div>
-
+      <div className="mb-4"><ProgressBar /></div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-4 space-y-4 order-2 lg:order-1">
           <div className="card p-4 sm:p-5">
@@ -564,26 +534,15 @@ export default function DetailingFlow() {
                 <ChevronLeft size={16} /> Terug
               </button>
               {step !== 'overview' && (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  disabled={!canNext}
-                  className="btn-primary py-2 px-4 text-sm inline-flex items-center gap-1 disabled:opacity-50"
-                >
+                <button type="button" onClick={handleNext} disabled={!canNext} className="btn-primary py-2 px-4 text-sm inline-flex items-center gap-1 disabled:opacity-50">
                   Volgende <ChevronRight size={16} />
                 </button>
               )}
             </div>
           </div>
         </div>
-
-        <div className="lg:col-span-5 order-1 lg:order-2">
-          <LoadSpaceViewer />
-        </div>
-
-        <div className="lg:col-span-3 order-3">
-          <ConfigSummary />
-        </div>
+        <div className="lg:col-span-5 order-1 lg:order-2"><LoadSpaceViewer /></div>
+        <div className="lg:col-span-3 order-3"><ConfigSummary /></div>
       </div>
     </div>
   );

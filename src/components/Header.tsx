@@ -1,6 +1,5 @@
 import { Droplets, Settings } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
-import { formatPriceOrPending } from '../lib/pricing';
 
 interface Props {
   onAdminClick: () => void;
@@ -10,6 +9,7 @@ export default function Header({ onAdminClick }: Props) {
   const pricing = useConfiguratorStore((s) => s.getPricing());
   const vehicleLabel = useConfiguratorStore((s) => s.getVehicleLabel());
   const hasVehicle = useConfiguratorStore((s) => s.configuration.vehicleCategory);
+  const itemCount = pricing.items.length;
 
   return (
     <header className="bg-white border-b border-industrial-200 sticky top-0 z-50 shadow-sm">
@@ -31,11 +31,13 @@ export default function Header({ onAdminClick }: Props) {
             </div>
             <div className="h-8 w-px bg-industrial-200" />
             <div className="text-right">
-              <p className="text-xs text-industrial-500">Status prijzen</p>
+              <p className="text-xs text-industrial-500">Prijzen</p>
               <p className="font-bold text-sm text-brand-700">
-                {pricing.hasPending
-                  ? `${pricing.pendingCount}× op aanvraag`
-                  : formatPriceOrPending(pricing.knownSubtotal)}
+                {itemCount === 0
+                  ? 'Nog geen selectie'
+                  : pricing.hasPending
+                    ? `${pricing.pendingCount}× op aanvraag`
+                    : 'Volledig bekend'}
               </p>
             </div>
           </div>
