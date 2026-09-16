@@ -23,7 +23,6 @@ function useHighlightMat(selected: boolean, base: string, metalness = 0.4, rough
   );
 }
 
-/** Industrial water tank with fill cap */
 export function TankMesh({
   item,
   selected,
@@ -33,7 +32,6 @@ export function TankMesh({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const prod = getProduct(item.productId);
   const [w, h, d] = item.size;
   const body = useHighlightMat(selected, tankBlue, 0.25, 0.55);
   const band = useMemo(() => new THREE.MeshStandardMaterial({ color: darkMetal, metalness: 0.6, roughness: 0.35 }), []);
@@ -41,24 +39,20 @@ export function TankMesh({
 
   return (
     <group position={item.position} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-      {/* rounded body approx */}
       <mesh castShadow receiveShadow material={body}>
         <boxGeometry args={[w * 0.92, h * 0.85, d * 0.92]} />
       </mesh>
       <mesh position={[0, h * 0.38, 0]} castShadow material={body}>
         <cylinderGeometry args={[Math.min(w, d) * 0.42, Math.min(w, d) * 0.45, h * 0.2, 16]} />
       </mesh>
-      {/* bands */}
       {[-0.2, 0.15].map((y, i) => (
         <mesh key={i} position={[0, y * h, 0]} material={band}>
           <boxGeometry args={[w * 0.96, 0.03, d * 0.96]} />
         </mesh>
       ))}
-      {/* fill cap */}
       <mesh position={[0, h * 0.52, d * 0.15]} material={cap}>
         <cylinderGeometry args={[0.06, 0.06, 0.08, 12]} />
       </mesh>
-      {/* outlet */}
       <mesh position={[w * 0.4, -h * 0.25, 0]} rotation={[0, 0, Math.PI / 2]} material={band}>
         <cylinderGeometry args={[0.03, 0.03, 0.12, 8]} />
       </mesh>
@@ -68,17 +62,10 @@ export function TankMesh({
           <meshBasicMaterial color="#3b82f6" wireframe transparent opacity={0.5} />
         </mesh>
       )}
-      {prod?.capacityLiters && (
-        <mesh position={[0, 0, d * 0.47]}>
-          <boxGeometry args={[w * 0.25, h * 0.12, 0.01]} />
-          <meshStandardMaterial color="#e2e8f0" />
-        </mesh>
-      )}
     </group>
   );
 }
 
-/** Hose reel: drum + side discs + axle + hose loops + bracket */
 export function HoseReelMesh({
   item,
   selected,
@@ -96,10 +83,8 @@ export function HoseReelMesh({
   const [w] = item.size;
   const r = w * 0.45;
   const depth = Math.max(item.size[2], 0.14);
-
   const discColor = isAir ? '#0f766e' : isPower ? '#a16207' : '#1e40af';
   const hoseColor = isAir ? '#134e4a' : isPower ? '#713f12' : '#1e3a8a';
-
   const discMat = useHighlightMat(selected, discColor, 0.35, 0.4);
   const hoseMat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: hoseColor, roughness: 0.7, metalness: 0.1 }),
@@ -112,41 +97,34 @@ export function HoseReelMesh({
 
   return (
     <group position={item.position} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-      {/* side discs */}
       <mesh position={[0, 0, depth / 2]} material={discMat} castShadow>
         <cylinderGeometry args={[r, r, 0.03, 24]} />
       </mesh>
       <mesh position={[0, 0, -depth / 2]} material={discMat} castShadow>
         <cylinderGeometry args={[r, r, 0.03, 24]} />
       </mesh>
-      {/* drum */}
       <mesh rotation={[Math.PI / 2, 0, 0]} material={frameMat} castShadow>
         <cylinderGeometry args={[r * 0.45, r * 0.45, depth * 0.9, 16]} />
       </mesh>
-      {/* hose windings */}
       {[0.55, 0.7, 0.85].map((f, i) => (
         <mesh key={i} rotation={[Math.PI / 2, 0, 0]} material={hoseMat}>
           <torusGeometry args={[r * f, isAir || isPower ? 0.018 : 0.025, 8, 24]} />
         </mesh>
       ))}
-      {/* axle */}
       <mesh rotation={[Math.PI / 2, 0, 0]} material={frameMat}>
         <cylinderGeometry args={[0.025, 0.025, depth + 0.08, 8]} />
       </mesh>
-      {/* mount bracket */}
       <mesh position={[0, -r * 0.9, 0]} material={frameMat}>
         <boxGeometry args={[r * 0.5, 0.06, depth * 0.8]} />
       </mesh>
       <mesh position={[0, -r * 1.15, 0]} material={frameMat}>
         <boxGeometry args={[r * 1.3, 0.04, 0.04]} />
       </mesh>
-      {/* hand crank for manual */}
       {isManual && (
         <mesh position={[r * 0.9, 0, depth / 2 + 0.04]} material={frameMat}>
           <boxGeometry args={[0.08, 0.04, 0.04]} />
         </mesh>
       )}
-      {/* label ring differentiation */}
       <mesh position={[0, r * 0.15, depth / 2 + 0.02]} material={discMat}>
         <torusGeometry args={[r * 0.2, 0.012, 6, 16]} />
       </mesh>
@@ -199,11 +177,9 @@ export function CompressorMesh({
           <cylinderGeometry args={[h * 0.32, h * 0.32, w * 0.85, 20]} />
         </mesh>
       )}
-      {/* motor */}
       <mesh position={[0, h * 0.25, 0]} material={motorMat} castShadow>
         <boxGeometry args={[w * 0.45, h * 0.35, d * 0.55]} />
       </mesh>
-      {/* protective frame */}
       <mesh position={[0, h * 0.15, 0]} material={frameMat}>
         <boxGeometry args={[w * 1.05, h * 0.08, d * 1.05]} />
       </mesh>
@@ -252,14 +228,12 @@ export function GeneratorMesh({
       <mesh material={bodyMat} castShadow>
         <boxGeometry args={[w * 0.9, h * 0.7, d * 0.85]} />
       </mesh>
-      {/* control panel */}
       <mesh position={[0, h * 0.15, d * 0.4]} material={panelMat}>
         <boxGeometry args={[w * 0.5, h * 0.25, 0.04]} />
       </mesh>
       <mesh position={[-w * 0.1, h * 0.15, d * 0.43]} material={accentMat}>
         <boxGeometry args={[0.06, 0.06, 0.02]} />
       </mesh>
-      {/* frame / handles */}
       <mesh position={[0, h * 0.4, 0]} material={frameMat}>
         <boxGeometry args={[w * 1.05, 0.04, d * 0.9]} />
       </mesh>
@@ -269,7 +243,6 @@ export function GeneratorMesh({
       <mesh position={[w * 0.48, 0, 0]} material={frameMat}>
         <boxGeometry args={[0.03, h * 0.85, 0.03]} />
       </mesh>
-      {/* exhaust hint */}
       <mesh position={[w * 0.35, h * 0.25, -d * 0.35]} rotation={[Math.PI / 2, 0, 0]} material={frameMat}>
         <cylinderGeometry args={[0.03, 0.03, 0.12, 8]} />
       </mesh>
@@ -307,7 +280,6 @@ export function VacuumMesh({
 
   return (
     <group position={item.position} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-      {/* canister */}
       <mesh position={[withReel ? -w * 0.15 : 0, 0, 0]} material={bodyMat} castShadow>
         <cylinderGeometry args={[w * 0.28, w * 0.3, h * 0.7, 16]} />
       </mesh>
@@ -360,7 +332,6 @@ export function PressureWasherMesh({
       <mesh position={[0, h * 0.35, 0]} material={bodyMat}>
         <boxGeometry args={[w * 0.5, h * 0.25, d * 0.4]} />
       </mesh>
-      {/* wheels */}
       <mesh position={[-w * 0.3, -h * 0.3, d * 0.25]} rotation={[Math.PI / 2, 0, 0]} material={wheelMat}>
         <cylinderGeometry args={[0.06, 0.06, 0.04, 12]} />
       </mesh>
@@ -394,6 +365,7 @@ export function FrameMesh({
     () => new THREE.MeshStandardMaterial({ color: '#6b7280', metalness: 0.45, roughness: 0.4 }),
     []
   );
+  const toolboxMat = useHighlightMat(selected, '#b45309', 0.3, 0.5);
 
   const hasShelf = ['full', 'standard'].includes(variant);
   const hasStorage = ['full', 'tank_storage', 'toolbox'].includes(variant);
@@ -401,7 +373,6 @@ export function FrameMesh({
 
   return (
     <group position={item.position} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-      {/* vertical posts */}
       {[-1, 1].map((side) =>
         [0, 1].map((z) => (
           <mesh
@@ -414,13 +385,11 @@ export function FrameMesh({
           </mesh>
         ))
       )}
-      {/* horizontal beams */}
       {[0.1, 0.45, 0.85].map((yf, i) => (
         <mesh key={i} position={[0, -h * 0.4 + yf * h, -d * 0.05]} material={mat}>
           <boxGeometry args={[w * 0.92, 0.035, 0.035]} />
         </mesh>
       ))}
-      {/* cross bars depth */}
       <mesh position={[-w * 0.45, h * 0.3, 0]} material={mat}>
         <boxGeometry args={[0.03, 0.03, d * 0.7]} />
       </mesh>
@@ -438,7 +407,7 @@ export function FrameMesh({
         </mesh>
       )}
       {hasToolbox && (
-        <mesh position={[-w * 0.25, -h * 0.2, 0.1]} material={useHighlightMat(selected, '#b45309', 0.3, 0.5)}>
+        <mesh position={[-w * 0.25, -h * 0.2, 0.1]} material={toolboxMat}>
           <boxGeometry args={[w * 0.3, h * 0.25, d * 0.35]} />
         </mesh>
       )}
@@ -541,19 +510,12 @@ export function SetMesh({
   );
 }
 
-/** Scale-in animation wrapper */
-export function AnimatedGroup({
-  children,
-  active = true,
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-}) {
+export function AnimatedGroup({ children }: { children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null);
   const reduced =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   useFrame((_, dt) => {
-    if (!ref.current || reduced || !active) return;
+    if (!ref.current || reduced) return;
     const s = ref.current.scale.x;
     if (s < 1) {
       const next = Math.min(1, s + dt * 4);
