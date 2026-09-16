@@ -64,7 +64,7 @@ function SceneContent(props: Props) {
   const { space, placements, liningVariant, selectedProductId, onSelectProduct, cameraPreset } = props;
   return (
     <>
-      <color attach="background" args={['#e2e8f0']} />
+      <color attach="background" args={['#0f1218']} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[4, 8, -2]} intensity={0.9} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <directionalLight position={[-3, 4, 2]} intensity={0.3} />

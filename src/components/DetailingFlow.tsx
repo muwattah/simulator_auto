@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import {
   vehicleCategories,
@@ -30,6 +31,9 @@ import {
   Zap,
   Wind,
   Package,
+  List,
+  Box,
+  LayoutGrid,
 } from 'lucide-react';
 
 function OptionCard({
@@ -49,18 +53,17 @@ function OptionCard({
     <button
       type="button"
       onClick={onClick}
-      className={`card p-4 text-left transition-all w-full ${
-        selected ? 'border-brand-500 ring-2 ring-brand-200 shadow-md' : 'hover:border-brand-300'
-      }`}
+      data-selected={selected}
+      className="option-card"
     >
       <div className="flex justify-between items-start gap-2">
-        <div>
-          <p className="font-semibold text-industrial-900">{title}</p>
-          {subtitle && <p className="text-sm text-industrial-500 mt-0.5">{subtitle}</p>}
+        <div className="min-w-0">
+          <p className="font-semibold text-[var(--text-primary)]">{title}</p>
+          {subtitle && <p className="text-sm text-[var(--text-secondary)] mt-0.5">{subtitle}</p>}
           {children}
         </div>
         {selected && (
-          <span className="bg-brand-600 text-white rounded-full p-0.5 shrink-0">
+          <span className="bg-[var(--accent)] text-white rounded-full p-0.5 shrink-0">
             <Check size={14} />
           </span>
         )}
@@ -90,10 +93,10 @@ function ProgressBar() {
               onClick={() => setStep(s)}
               className={`text-[10px] sm:text-xs px-2 py-1 rounded-full border transition-colors ${
                 active
-                  ? 'bg-brand-600 text-white border-brand-600'
+                  ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                   : done
-                    ? 'bg-brand-50 text-brand-800 border-brand-200'
-                    : 'bg-white text-industrial-500 border-industrial-200'
+                    ? 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent-muted)]'
+                    : 'bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)]'
               }`}
             >
               {STEP_LABELS[s]}
@@ -126,7 +129,7 @@ function Checklist() {
         <span
           key={it.label}
           className={`px-1.5 py-0.5 rounded border ${
-            it.ok ? 'bg-green-50 text-green-800 border-green-200' : 'bg-industrial-50 text-industrial-500 border-industrial-200'
+            it.ok ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30' : 'bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)]'
           }`}
         >
           {it.label} {it.ok ? '✓' : '—'}
@@ -185,22 +188,22 @@ function ConfigSummary() {
 
   return (
     <div className="card p-4 sticky top-24">
-      <h3 className="font-bold text-industrial-900 mb-3 flex items-center gap-2">
+      <h3 className="font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
         <Package size={18} /> Jouw detailing unit
       </h3>
       <Checklist />
       {rows.length === 0 ? (
-        <p className="text-sm text-industrial-500 py-6 text-center">Nog geen onderdelen geselecteerd.</p>
+        <p className="text-sm text-[var(--text-muted)] py-6 text-center">Nog geen onderdelen geselecteerd.</p>
       ) : (
         <ul className="mt-3 space-y-2 max-h-64 overflow-y-auto text-sm">
           {rows.map((r, i) => (
-            <li key={i} className="flex justify-between gap-2 border-b border-industrial-50 pb-1.5">
+            <li key={i} className="flex justify-between gap-2 border-b border-[var(--border)] pb-1.5">
               <div className="min-w-0">
-                <p className="text-[10px] uppercase text-industrial-400">{r.label}</p>
-                <p className="text-industrial-800 truncate">{r.value}</p>
+                <p className="text-[10px] uppercase text-[var(--text-muted)]">{r.label}</p>
+                <p className="text-[var(--text-primary)] truncate">{r.value}</p>
               </div>
               {r.id && (
-                <button type="button" className="text-xs text-red-500 shrink-0" onClick={() => removeProductById(r.id!)}>
+                <button type="button" className="text-xs text-[var(--danger)] shrink-0" onClick={() => removeProductById(r.id!)}>
                   ×
                 </button>
               )}
@@ -209,30 +212,30 @@ function ConfigSummary() {
         </ul>
       )}
       {water > 0 && (
-        <p className="text-xs text-industrial-500 mt-3">
+        <p className="text-xs text-[var(--text-muted)] mt-3">
           Geschat watergewicht: ±{water} kg
           <span className="block text-[10px] mt-0.5">
             Geschat gewicht van het water; voertuigbelasting en toegestane massa moeten afzonderlijk gecontroleerd worden.
           </span>
         </p>
       )}
-      <div className="border-t border-industrial-100 mt-3 pt-3 text-sm">
+      <div className="border-t border-[var(--border)] mt-3 pt-3 text-sm">
         {pricing.items.length === 0 ? (
-          <p className="text-industrial-500 text-xs">Geen prijzen — nog geen onderdelen</p>
+          <p className="text-[var(--text-muted)] text-xs">Geen prijzen — nog geen onderdelen</p>
         ) : pricing.hasPending ? (
           <>
             {pricing.knownSubtotal > 0 && (
-              <p className="text-industrial-600">
+              <p className="text-[var(--text-secondary)]">
                 Bekend subtotaal: <span className="font-semibold">{formatPriceOrPending(pricing.knownSubtotal)}</span>
               </p>
             )}
-            <p className="text-amber-700 text-xs mt-1 font-medium">
+            <p className="text-[var(--warning)] text-xs mt-1 font-medium">
               {pricing.pendingCount} onderdeel{pricing.pendingCount !== 1 ? 'en' : ''} — prijs op aanvraag
             </p>
-            <p className="text-[10px] text-industrial-400 mt-1">Nog geen definitief totaal</p>
+            <p className="text-[10px] text-[var(--text-muted)] mt-1">Nog geen definitief totaal</p>
           </>
         ) : (
-          <p className="font-bold text-brand-700">{formatPriceOrPending(pricing.knownSubtotal)}</p>
+          <p className="font-bold text-[var(--accent)]">{formatPriceOrPending(pricing.knownSubtotal)}</p>
         )}
       </div>
     </div>
@@ -267,7 +270,7 @@ function StepContent() {
   if (step === 'vehicle') {
     return (
       <div className="space-y-3">
-        <h2 className="text-lg font-bold text-industrial-900 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
           <Truck size={20} /> Welk type voertuig wil je inrichten?
         </h2>
         <div className="grid sm:grid-cols-2 gap-3">
@@ -279,7 +282,7 @@ function StepContent() {
               title={v.name}
               subtitle={v.description}
             >
-              <p className="text-xs text-industrial-400 mt-2">{v.examples.slice(0, 3).join(' · ')}</p>
+              <p className="text-xs text-[var(--text-muted)] mt-2">{v.examples.slice(0, 3).join(' · ')}</p>
             </OptionCard>
           ))}
         </div>
@@ -292,14 +295,14 @@ function StepContent() {
       return (
         <div className="space-y-3">
           <h2 className="text-lg font-bold">Cabine</h2>
-          <p className="text-sm text-industrial-600">Niet van toepassing op aanhangwagen.</p>
+          <p className="text-sm text-[var(--text-secondary)]">Niet van toepassing op aanhangwagen.</p>
         </div>
       );
     }
     return (
       <div className="space-y-3">
-        <h2 className="text-lg font-bold text-industrial-900">Welke cabine heeft het voertuig?</h2>
-        <p className="text-sm text-industrial-500">Dubbele cabine = minder laadlengte in de 3D-simulatie (demo-afmetingen).</p>
+        <h2 className="text-lg font-bold text-[var(--text-primary)]">Welke cabine heeft het voertuig?</h2>
+        <p className="text-sm text-[var(--text-muted)]">Dubbele cabine = minder laadlengte in de 3D-simulatie (demo-afmetingen).</p>
         <div className="grid sm:grid-cols-2 gap-3">
           <OptionCard selected={c.cabType === 'single'} onClick={() => { setCabType('single'); markVisited('cab'); }} title="Enkele cabine" subtitle="Maximale laadlengte" />
           <OptionCard selected={c.cabType === 'double'} onClick={() => { setCabType('double'); markVisited('cab'); }} title="Dubbele cabine" subtitle="Kortere laadruimte" />
@@ -470,7 +473,7 @@ function StepContent() {
         <div>
           <label className="font-semibold text-sm block mb-1">Opmerkingen / speciale wensen</label>
           <textarea
-            className="w-full border border-industrial-200 rounded-lg p-3 text-sm min-h-[100px]"
+            className="w-full border border-[var(--border)] rounded-lg p-3 text-sm min-h-[100px] bg-[var(--surface)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             placeholder="Bijvoorbeeld: drie haspels naast elkaar, extra ruimte vrijhouden voor eigen machine..."
             value={c.specialRequests}
             onChange={(e) => setSpecialRequests(e.target.value)}
@@ -488,13 +491,13 @@ function StepContent() {
         <p><strong>Voertuig:</strong> {useConfiguratorStore.getState().getVehicleLabel()}</p>
         <p><strong>Onderdelen:</strong> {snap.pendingPriceItems.length} geselecteerd (prijzen op aanvraag)</p>
         <p><strong>Watergewicht:</strong> ±{snap.estimatedWaterWeightKg} kg</p>
-        <p className="text-[10px] text-industrial-400">Geschat gewicht van het water; voertuigbelasting en toegestane massa moeten afzonderlijk gecontroleerd worden.</p>
+        <p className="text-[10px] text-[var(--text-muted)]">Geschat gewicht van het water; voertuigbelasting en toegestane massa moeten afzonderlijk gecontroleerd worden.</p>
         {snap.layoutWarnings.length > 0 && (
-          <div className="text-amber-700 text-xs mt-2">{snap.layoutWarnings.map((w, i) => <p key={i}>{w}</p>)}</div>
+          <div className="text-[var(--warning)] text-xs mt-2">{snap.layoutWarnings.map((w, i) => <p key={i}>{w}</p>)}</div>
         )}
         {snap.specialRequests && <p className="mt-2"><strong>Wensen:</strong> {snap.specialRequests}</p>}
       </div>
-      <p className="text-xs text-industrial-500">Prijzen worden later aangevuld. Configuratie wordt lokaal in de browser bewaard.</p>
+      <p className="text-xs text-[var(--text-muted)]">Prijzen worden later aangevuld. Configuratie wordt lokaal in de browser bewaard.</p>
     </div>
   );
 }
@@ -517,32 +520,75 @@ export default function DetailingFlow() {
     nextStep();
   };
 
+  const [mobileTab, setMobileTab] = useState<'keuzes' | '3d' | 'overzicht'>('keuzes');
+
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 pb-28 lg:pb-6">
+    <div className="max-w-[1600px] mx-auto px-3 sm:px-5 py-4 pb-28 lg:pb-8">
       {DEMO_MODE && (
-        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="mb-3 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 px-3 py-2 text-xs text-[var(--warning)]">
           <strong>Demoversie</strong> — productgegevens en prijzen worden nog aangevuld. Geen bindende offerte.
         </div>
       )}
       <div className="mb-4"><ProgressBar /></div>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-4 space-y-4 order-2 lg:order-1">
-          <div className="card p-4 sm:p-5">
+
+      <div className="hidden lg:grid lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-4 space-y-4">
+          <div className="card p-5">
             <StepContent />
-            <div className="flex justify-between gap-2 mt-6 pt-4 border-t border-industrial-100">
-              <button type="button" onClick={prevStep} className="btn-secondary py-2 px-3 text-sm inline-flex items-center gap-1" disabled={step === 'vehicle'}>
+            <div className="flex justify-between gap-2 mt-6 pt-4 border-t border-[var(--border)]">
+              <button type="button" onClick={prevStep} className="btn-secondary btn-sm" disabled={step === 'vehicle'}>
                 <ChevronLeft size={16} /> Terug
               </button>
               {step !== 'overview' && (
-                <button type="button" onClick={handleNext} disabled={!canNext} className="btn-primary py-2 px-4 text-sm inline-flex items-center gap-1 disabled:opacity-50">
+                <button type="button" onClick={handleNext} disabled={!canNext} className="btn-primary btn-sm">
                   Volgende <ChevronRight size={16} />
                 </button>
               )}
             </div>
           </div>
         </div>
-        <div className="lg:col-span-5 order-1 lg:order-2"><LoadSpaceViewer /></div>
-        <div className="lg:col-span-3 order-3"><ConfigSummary /></div>
+        <div className="lg:col-span-5"><LoadSpaceViewer /></div>
+        <div className="lg:col-span-3"><ConfigSummary /></div>
+      </div>
+
+      <div className="lg:hidden">
+        <div className="mb-3">
+          {mobileTab === 'keuzes' && (
+            <div className="card p-4">
+              <StepContent />
+              <div className="flex justify-between gap-2 mt-6 pt-4 border-t border-[var(--border)]">
+                <button type="button" onClick={prevStep} className="btn-secondary btn-sm" disabled={step === 'vehicle'}>
+                  <ChevronLeft size={16} /> Terug
+                </button>
+                {step !== 'overview' && (
+                  <button type="button" onClick={handleNext} disabled={!canNext} className="btn-primary btn-sm">
+                    Volgende <ChevronRight size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          {mobileTab === '3d' && <LoadSpaceViewer />}
+          {mobileTab === 'overzicht' && <ConfigSummary />}
+        </div>
+        <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--border)] bg-[var(--bg-primary)]/95 backdrop-blur-md" aria-label="Configurator navigatie">
+          <div className="grid grid-cols-3 max-w-lg mx-auto">
+            {([
+              { id: 'keuzes' as const, label: 'Keuzes', icon: List },
+              { id: '3d' as const, label: '3D', icon: Box },
+              { id: 'overzicht' as const, label: 'Overzicht', icon: LayoutGrid },
+            ]).map((tab) => {
+              const Icon = tab.icon;
+              const active = mobileTab === tab.id;
+              return (
+                <button key={tab.id} type="button" onClick={() => setMobileTab(tab.id)} className={`flex flex-col items-center gap-0.5 py-3 text-[11px] font-semibold transition-colors ${active ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
+                  <Icon size={20} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </div>
     </div>
   );

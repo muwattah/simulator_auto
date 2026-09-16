@@ -1,31 +1,25 @@
-import { useConfiguratorStore } from './store/configuratorStore';
+import { useState, useCallback } from 'react';
 import Header from './components/Header';
 import DetailingFlow from './components/DetailingFlow';
 import AdminPanel from './components/AdminPanel';
-import { useState } from 'react';
+import HomePage from './components/HomePage';
+
+type View = 'home' | 'configurator';
 
 function App() {
+  const [view, setView] = useState<View>('home');
   const [showAdmin, setShowAdmin] = useState(false);
+  const goHome = useCallback(() => { setView('home'); window.scrollTo(0, 0); }, []);
+  const goConfigurator = useCallback(() => { setView('configurator'); window.scrollTo(0, 0); }, []);
 
-  if (showAdmin) {
-    return <AdminPanel onClose={() => setShowAdmin(false)} />;
-  }
+  if (showAdmin) return <AdminPanel onClose={() => setShowAdmin(false)} />;
+  if (view === 'home') return <HomePage onStart={goConfigurator} />;
 
   return (
-    <div className="min-h-screen bg-industrial-50 flex flex-col">
-      <Header onAdminClick={() => setShowAdmin(true)} />
-      <main className="flex-1">
-        <DetailingFlow />
-      </main>
-      <footer className="bg-industrial-900 text-industrial-300 py-8 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center text-sm">
-          <p className="font-semibold text-white mb-1">Mobile Detailing Configurator</p>
-          <p>Demoversie — productgegevens en prijzen worden nog aangevuld</p>
-          <p className="mt-2 text-xs">© {new Date().getFullYear()} · Bouw jouw mobiele detailing unit</p>
-        </div>
-      </footer>
+    <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
+      <Header onAdminClick={() => setShowAdmin(true)} onBackHome={goHome} />
+      <main className="flex-1"><DetailingFlow /></main>
     </div>
   );
 }
-
 export default App;

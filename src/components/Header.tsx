@@ -1,53 +1,49 @@
-import { Droplets, Settings } from 'lucide-react';
+import { ArrowLeft, Settings } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 
 interface Props {
   onAdminClick: () => void;
+  onBackHome?: () => void;
 }
 
-export default function Header({ onAdminClick }: Props) {
+export default function Header({ onAdminClick, onBackHome }: Props) {
   const pricing = useConfiguratorStore((s) => s.getPricing());
   const vehicleLabel = useConfiguratorStore((s) => s.getVehicleLabel());
   const hasVehicle = useConfiguratorStore((s) => s.configuration.vehicleCategory);
   const itemCount = pricing.items.length;
+  const priceLabel =
+    itemCount === 0 ? 'Nog geen selectie' : pricing.hasPending ? `${pricing.pendingCount}× op aanvraag` : 'Volledig bekend';
 
   return (
-    <header className="bg-white border-b border-industrial-200 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-brand-600 text-white p-2 rounded-lg">
-            <Droplets size={24} />
-          </div>
-          <div>
-            <h1 className="font-bold text-lg text-industrial-900 leading-tight">Mobile Detailing Configurator</h1>
-            <p className="text-xs text-industrial-500 hidden sm:block">Bouw jouw mobiele detailing unit · 3D configurator</p>
+    <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg-primary)]/95 backdrop-blur-md">
+      <div className="max-w-[1600px] mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {onBackHome && (
+            <button type="button" onClick={onBackHome} className="btn-ghost btn-sm shrink-0 -ml-1" aria-label="Terug naar home">
+              <ArrowLeft size={18} />
+              <span className="hidden sm:inline">Home</span>
+            </button>
+          )}
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold tracking-[0.12em] text-[var(--text-muted)] leading-none">MOBILE DETAILING</p>
+            <p className="text-sm font-bold text-[var(--text-primary)] truncate leading-tight">Configurator</p>
           </div>
         </div>
         {hasVehicle && (
-          <div className="hidden md:flex items-center gap-6">
-            <div className="text-right">
-              <p className="text-xs text-industrial-500">Voertuig</p>
-              <p className="font-medium text-sm text-industrial-800">{vehicleLabel}</p>
+          <div className="hidden md:flex items-center gap-5 text-right">
+            <div>
+              <p className="label-meta">Voertuig</p>
+              <p className="text-sm font-medium text-[var(--text-primary)]">{vehicleLabel}</p>
             </div>
-            <div className="h-8 w-px bg-industrial-200" />
-            <div className="text-right">
-              <p className="text-xs text-industrial-500">Prijzen</p>
-              <p className="font-bold text-sm text-brand-700">
-                {itemCount === 0
-                  ? 'Nog geen selectie'
-                  : pricing.hasPending
-                    ? `${pricing.pendingCount}× op aanvraag`
-                    : 'Volledig bekend'}
-              </p>
+            <div className="h-8 w-px bg-[var(--border)]" />
+            <div>
+              <p className="label-meta">Prijsstatus</p>
+              <p className="text-sm font-semibold text-[var(--accent)]">{priceLabel}</p>
             </div>
           </div>
         )}
-        <button
-          onClick={onAdminClick}
-          className="p-2 text-industrial-400 hover:text-industrial-600 hover:bg-industrial-100 rounded-lg transition-colors"
-          title="Admin"
-        >
-          <Settings size={20} />
+        <button type="button" onClick={onAdminClick} className="p-2.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface)] rounded-btn transition-colors" title="Admin" aria-label="Admin panel">
+          <Settings size={18} />
         </button>
       </div>
     </header>
