@@ -1,120 +1,215 @@
-/** DEMO_DATA marker: types are production-ready; data files may still contain DEMO placeholders */
+/** Mobile Detailing / Carwash Configurator — types */
 
-export type LengthCode = 'L1' | 'L2' | 'L3' | 'L4';
-export type HeightCode = 'H1' | 'H2' | 'H3';
-export type PositionCode = 'left' | 'right' | 'floor' | 'roof' | 'front' | 'rear' | 'any';
-export type Zone3D = 'leftWall' | 'rightWall' | 'frontWall' | 'floor' | 'ceiling' | 'roof' | 'any';
+export type VehicleCategory = 'small' | 'medium' | 'large' | 'trailer';
+export type CabType = 'single' | 'double';
+export type PriceStatus = 'known' | 'pending';
+export type InstallationType = 'installed' | 'pickup' | null;
 
-/** Generic 3D representation — later replaceable by GLB/GLTF via modelUrl */
+export type ConfigStep =
+  | 'vehicle'
+  | 'cab'
+  | 'tank'
+  | 'pressure'
+  | 'compressor'
+  | 'power'
+  | 'vacuum'
+  | 'lining'
+  | 'frame'
+  | 'extras'
+  | 'installation'
+  | 'overview';
+
+export type PlacementZone =
+  | 'rearFrame.upperLeft'
+  | 'rearFrame.upperCenter'
+  | 'rearFrame.upperRight'
+  | 'rearFrame.middleLeft'
+  | 'rearFrame.middleCenter'
+  | 'rearFrame.middleRight'
+  | 'rearFrame.lowerLeft'
+  | 'rearFrame.lowerCenter'
+  | 'rearFrame.lowerRight'
+  | 'leftWall'
+  | 'rightWall'
+  | 'frontWall'
+  | 'floor'
+  | 'ceiling'
+  | 'leftRearDoor'
+  | 'rightRearDoor'
+  | 'any';
+
+export type VisualType =
+  | 'tank'
+  | 'pressureWasher'
+  | 'hoseReel'
+  | 'compressor'
+  | 'generator'
+  | 'vacuum'
+  | 'frame'
+  | 'shelf'
+  | 'toolbox'
+  | 'bottleHolder'
+  | 'bucketHolder'
+  | 'lining'
+  | 'set'
+  | 'none';
+
 export interface Visual3D {
-  type: 'cabinet' | 'drawerUnit' | 'workbench' | 'floor' | 'wallPanel' | 'partition' | 'rail' | 'led' | 'roofRack' | 'ladderHolder' | 'accessory' | 'none';
+  type: VisualType;
   width?: number;
   height?: number;
   depth?: number;
-  zone: Zone3D;
+  zone?: PlacementZone;
   modelUrl?: string;
+  variant?: string;
   isDemoAsset?: boolean;
 }
 
-export interface Vehicle {
-  id: string;
-  brand: string;
-  model: string;
-  category: 'small' | 'medium' | 'large';
-  image?: string;
-  isDemo?: boolean;
+export interface ProductDimensions {
+  width: number;
+  height: number;
+  depth: number;
+  clearance?: number;
 }
 
-export interface VehicleVariant {
-  id: string;
-  vehicleId: string;
-  name: string;
-  length: LengthCode;
-  height: HeightCode;
-  yearFrom?: number;
-  yearTo?: number;
-  description?: string;
-  loadLengthMm?: number;
-  loadWidthMm?: number;
-  loadHeightMm?: number;
+export interface ProductPlacement {
+  preferredZone: PlacementZone;
+  allowedZones: PlacementZone[];
+  priority: number;
 }
 
 export interface ProductCompatibility {
-  vehicleIds?: string[];
-  brandIds?: string[];
-  lengthCodes?: LengthCode[];
-  heightCodes?: HeightCode[];
-  categories?: Array<'small' | 'medium' | 'large'>;
-  maxLengthMm?: number;
-  maxHeightMm?: number;
+  vehicleCategories?: VehicleCategory[];
+  cabTypes?: CabType[];
+  maxTankLiters?: number;
+  minCargoLengthM?: number;
+  requires?: string[];
+  conflicts?: string[];
 }
 
-export interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  icon?: string;
-  order: number;
-}
-
-export interface Product {
+export interface DetailingProduct {
   id: string;
   sku: string;
-  categoryId: string;
-  subcategory?: string;
+  category: string;
   name: string;
   description: string;
-  image?: string;
-  dimensions?: string;
-  weightKg?: number;
-  price: number;
-  btwPercentage: number;
-  montagePrice: number;
-  montageHours?: number;
-  montageRequired?: boolean;
-  montageOptional?: boolean;
-  active: boolean;
+  specifications?: Record<string, string | number>;
+  price: number | null;
+  priceStatus: PriceStatus;
+  installationPrice?: number | null;
+  visual3D: Visual3D;
+  dimensions: ProductDimensions;
+  placement: ProductPlacement;
   compatibility: ProductCompatibility;
-  possiblePositions: PositionCode[];
-  tags: string[];
-  recommendedForProfessions: string[];
-  relatedProductIds: string[];
-  visual3D?: Visual3D;
+  capacityLiters?: number;
+  estimatedWaterWeightKg?: number;
+  weightEmptyKg?: number;
+  active: boolean;
   isDemo?: boolean;
 }
 
-export interface PackageItem {
-  productId: string;
-  quantity: number;
-}
-
-export interface Package {
-  id: string;
+export interface VehicleCategoryOption {
+  id: VehicleCategory;
   name: string;
   description: string;
-  price: number;
-  discountPercent?: number;
-  items: PackageItem[];
-  popularFor?: string[];
-  badge?: string;
-  image?: string;
-  isDemo?: boolean;
+  examples: string[];
+  /** demo cargo dimensions in meters */
+  cargo: { length: number; width: number; height: number };
+  doubleCabLengthFactor: number;
 }
 
-export interface ConfigurationItem {
-  productId: string;
-  quantity: number;
-  position?: PositionCode;
-  includeMontage?: boolean;
+export interface CargoSpaceMeters {
+  length: number;
+  width: number;
+  height: number;
+  isDemo: boolean;
+  vehicleCategory: VehicleCategory | null;
+  cabType: CabType | null;
 }
 
-export interface Configuration {
-  vehicleVariantId: string | null;
-  items: ConfigurationItem[];
-  packageId?: string | null;
-  profession?: string | null;
-  budgetBand?: string | null;
+export interface DetailingConfiguration {
+  vehicleCategory: VehicleCategory | null;
+  cabType: CabType | null;
+  tankId: string | null;
+  floatValve: boolean | null;
+  pressureWasherId: string | null;
+  pressureReelId: string | null;
+  compressorId: string | null;
+  airReelId: string | null;
+  generatorId: string | null;
+  powerReelId: string | null;
+  vacuumId: string | null;
+  liningId: string | null;
+  frameComboId: string | null;
+  extraIds: string[];
+  bottleHolder: boolean;
+  bucketHolder: boolean;
+  installationType: InstallationType;
+  specialRequests: string;
   includeBTW: boolean;
+}
+
+export interface PlacedItem {
+  productId: string;
+  zone: PlacementZone;
+  position: [number, number, number];
+  size: [number, number, number];
+  slotIndex?: number;
+}
+
+export interface LayoutResult {
+  placements: PlacedItem[];
+  warnings: string[];
+  fits: boolean;
+  requiresInstallerReview: boolean;
+}
+
+export interface PricingLine {
+  productId: string;
+  name: string;
+  sku: string;
+  unitPrice: number | null;
+  priceStatus: PriceStatus;
+  qty: number;
+  lineTotal: number | null;
+}
+
+export interface PricingResult {
+  items: PricingLine[];
+  knownSubtotal: number;
+  pendingCount: number;
+  pendingNames: string[];
+  btwRate: number;
+  knownBtw: number;
+  knownTotalIncl: number;
+  hasPending: boolean;
+}
+
+export interface ConfigurationSnapshot {
+  configurationId: string;
+  createdAt: string;
+  vehicleCategory: VehicleCategory | null;
+  cabType: CabType | null;
+  tank: string | null;
+  floatValve: boolean | null;
+  pressureWasher: string | null;
+  pressureReel: string | null;
+  compressor: string | null;
+  airReel: string | null;
+  generator: string | null;
+  powerReel: string | null;
+  vacuum: string | null;
+  lining: string | null;
+  frameCombo: string | null;
+  extras: string[];
+  bottleHolder: boolean;
+  bucketHolder: boolean;
+  installationType: InstallationType;
+  specialRequests: string;
+  knownSubtotal: number;
+  pendingPriceItems: string[];
+  estimatedWaterWeightKg: number;
+  layoutWarnings: string[];
 }
 
 export interface Customer {
@@ -124,83 +219,16 @@ export interface Customer {
   email: string;
   phone: string;
   postcode: string;
-  vatNumber?: string;
   remarks?: string;
-}
-
-export interface QuotePriceSnapshot {
-  items: {
-    productId: string;
-    name: string;
-    sku: string;
-    unitPrice: number;
-    montage: number;
-    qty: number;
-    lineTotal: number;
-  }[];
-  productSubtotal: number;
-  montageTotal: number;
-  packageDiscount: number;
-  subtotalExcl: number;
-  btwAmount: number;
-  totalIncl: number;
-  totalExcl: number;
-  btwRate: number;
 }
 
 export interface Quote {
   id: string;
-  configurationId: string;
   createdAt: string;
   customer: Customer;
-  configuration: Configuration;
-  vehicleLabel: string;
-  professionLabel?: string;
-  priceSnapshot: QuotePriceSnapshot;
+  snapshot: ConfigurationSnapshot;
   status: 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
   storage: 'local';
 }
 
-export interface PricingResult {
-  items: {
-    productId: string;
-    name: string;
-    sku: string;
-    unitPrice: number;
-    montage: number;
-    qty: number;
-    lineTotal: number;
-    includeMontage: boolean;
-  }[];
-  productSubtotal: number;
-  montageTotal: number;
-  packageDiscount: number;
-  discount: number;
-  surcharge: number;
-  subtotalExcl: number;
-  btwAmount: number;
-  totalIncl: number;
-  totalExcl: number;
-  btwRate: number;
-}
-
-export interface RecommendationInput {
-  vehicleVariantId: string;
-  professionId: string;
-  budgetBand: 'under_1500' | '1500_2500' | '2500_4000' | 'over_4000';
-}
-
-export interface RecommendationResult {
-  packageId?: string;
-  productIds: string[];
-  title: string;
-  rationale: string;
-  estimatedExcl: number;
-}
-
-export interface CargoSpaceMeters {
-  length: number;
-  width: number;
-  height: number;
-  isDemo: boolean;
-}
+export const DEMO_MODE = true;
