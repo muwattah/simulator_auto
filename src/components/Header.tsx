@@ -25,9 +25,18 @@ export default function Header({ onAdminClick, onBackHome }: Props) {
               <span className="hidden sm:inline">Home</span>
             </button>
           )}
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold tracking-[0.12em] text-[var(--text-muted)] leading-none">{company.shortName.toUpperCase()}</p>
-            <p className="text-sm font-bold text-[var(--text-primary)] truncate leading-tight">Configurator</p>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img
+              src={`${import.meta.env.BASE_URL}brand/rs-logo-sm.png`}
+              alt="RS Car Cleaning — Tools And Supplies"
+              className="h-8 w-auto object-contain shrink-0"
+              width={80}
+              height={40}
+            />
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-[var(--text-muted)] leading-none">{company.shortName.toUpperCase()}</p>
+              <p className="text-sm font-bold text-[var(--text-primary)] truncate leading-tight">Configurator</p>
+            </div>
           </div>
         </div>
         {hasVehicle && (
