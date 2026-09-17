@@ -65,14 +65,15 @@ function SceneContent(props: Props) {
   return (
     <>
       <color attach="background" args={['#0f1218']} />
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[4, 8, -2]} intensity={0.9} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-      <directionalLight position={[-3, 4, 2]} intensity={0.3} />
+      <ambientLight intensity={0.48} />
+      <directionalLight position={[4, 8, -2]} intensity={1.05} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <directionalLight position={[-3, 4, 2]} intensity={0.35} />
+      <directionalLight position={[0, 3, -6]} intensity={0.25} />
       <CargoShell space={space} liningVariant={liningVariant} />
       {placements.map((p) => (
         <ProductMeshSwitcher key={p.productId} item={p} selected={selectedProductId === p.productId} onSelect={() => onSelectProduct(selectedProductId === p.productId ? null : p.productId)} />
       ))}
-      <ContactShadows position={[0, 0.01, 0]} opacity={0.35} scale={14} blur={2.5} far={5} />
+      <ContactShadows position={[0, 0.01, 0]} opacity={0.42} scale={14} blur={2.2} far={6} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={1.2} maxDistance={14} maxPolarAngle={Math.PI * 0.48} target={[0, space.height * 0.35, -space.length * 0.1]} />
       <CameraController preset={cameraPreset} space={space} />
     </>

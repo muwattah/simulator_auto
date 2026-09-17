@@ -45,7 +45,7 @@ export default function LoadSpaceViewer() {
   const selected = selectedProductId ? getProduct(selectedProductId) : null;
   const selectedPlacement = layout.placements.find((p) => p.productId === selectedProductId);
   const liningVariant = getProduct(configuration.liningId)?.visual3D.variant ?? 'none';
-  const heightClass = expanded ? 'h-[70vh] min-h-[420px]' : 'h-[280px] sm:h-[340px] lg:h-[400px]';
+  const heightClass = expanded ? 'h-[72vh] min-h-[440px]' : 'h-[300px] sm:h-[380px] lg:h-[460px]';
 
   return (
     <div className="card overflow-hidden">
