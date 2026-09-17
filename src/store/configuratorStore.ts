@@ -13,6 +13,7 @@ import type {
 import { calculatePricing } from '../lib/pricing';
 import { computeLayout, estimatedWaterWeight, getCargoSpace } from '../lib/layoutEngine';
 import { STEP_ORDER, getVehicleCategory, getProduct } from '../data/detailingCatalog';
+import { generateConfigurationId } from '../services/quoteService';
 
 interface State {
   step: ConfigStep;
@@ -219,7 +220,7 @@ export const useConfiguratorStore = create<State>()(
         const pricing = calculatePricing(c);
         const layout = computeLayout(c);
         return {
-          configurationId: `CFG-${Date.now()}`,
+          configurationId: generateConfigurationId(),
           createdAt: new Date().toISOString(),
           vehicleCategory: c.vehicleCategory,
           cabType: c.cabType,
