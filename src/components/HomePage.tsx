@@ -36,6 +36,15 @@ const COMPONENTS = [
   { title: 'Opslag', meta: 'Rekken · bottle · bucket holders' },
 ];
 
+const REALISATION_IMAGES = [
+  { src: 'realisations/van-wrap-side.jpg', alt: 'RS Car Detailing werkbus met full wrap, zijaanzicht' },
+  { src: 'realisations/van-wrap-front.jpg', alt: 'RS Car Detailing werkbus met full wrap, vooraanzicht' },
+  { src: 'realisations/interior-01.jpg', alt: 'Interieurinrichting van een mobiele detailing-werkbus' },
+  { src: 'realisations/interior-02.jpg', alt: 'Opberg- en werkruimte in een RS werkbus' },
+  { src: 'realisations/interior-03.jpg', alt: 'Detail van de laadruimte-inrichting' },
+  { src: 'realisations/workbench-01.jpg', alt: 'Werkbank en apparatuur in de werkbus' },
+];
+
 function HeroInstallPreview({ dense }: { dense?: boolean }) {
   return (
     <div className={`relative w-full max-w-md mx-auto ${dense ? 'scale-90' : ''}`} aria-hidden>
@@ -77,12 +86,22 @@ export default function HomePage({ onStart }: Props) {
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-base border-b border-transparent ${scrolled || menuOpen ? 'header-scrolled' : 'bg-transparent'}`}>
         <div className="container-content flex items-center justify-between h-16 md:h-[4.25rem]">
-          <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-left group">
-            <span className="block text-[11px] font-semibold tracking-[0.16em] text-[var(--text-muted)]">RS CAR DETAILING</span>
-            <span className="block text-sm font-bold tracking-wide text-[var(--text-primary)] -mt-0.5">CONFIGURATOR</span>
+          <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-left group flex items-center gap-2.5">
+            <img
+              src={`${import.meta.env.BASE_URL}brand/rs-logo-sm.png`}
+              alt="RS Car Cleaning — Tools And Supplies"
+              className="h-9 w-auto object-contain"
+              width={90}
+              height={45}
+            />
+            <span className="hidden sm:block">
+              <span className="block text-[11px] font-semibold tracking-[0.16em] text-[var(--text-muted)]">RS CAR DETAILING</span>
+              <span className="block text-sm font-bold tracking-wide text-[var(--text-primary)] -mt-0.5">CONFIGURATOR</span>
+            </span>
           </button>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[var(--text-secondary)]">
             <button type="button" onClick={() => scrollTo('hoe-het-werkt')} className="hover:text-[var(--text-primary)] transition-colors">Hoe het werkt</button>
+            <button type="button" onClick={() => scrollTo('realisaties')} className="hover:text-[var(--text-primary)] transition-colors">Realisaties</button>
             <button type="button" onClick={() => scrollTo('mogelijkheden')} className="hover:text-[var(--text-primary)] transition-colors">Mogelijkheden</button>
             <button type="button" onClick={() => scrollTo('showcase')} className="hover:text-[var(--text-primary)] transition-colors">3D Configurator</button>
             <button type="button" onClick={onStart} className="hover:text-[var(--text-primary)] transition-colors">Configurator</button>
@@ -97,7 +116,7 @@ export default function HomePage({ onStart }: Props) {
         {menuOpen && (
           <div className="md:hidden border-t border-[var(--border)] bg-[var(--bg-primary)]">
             <div className="container-content py-4 flex flex-col gap-1">
-              {[{ label: 'Hoe het werkt', id: 'hoe-het-werkt' }, { label: 'Mogelijkheden', id: 'mogelijkheden' }, { label: '3D Configurator', id: 'showcase' }].map((item) => (
+              {[{ label: 'Hoe het werkt', id: 'hoe-het-werkt' }, { label: 'Realisaties', id: 'realisaties' }, { label: 'Mogelijkheden', id: 'mogelijkheden' }, { label: '3D Configurator', id: 'showcase' }].map((item) => (
                 <button key={item.id} type="button" onClick={() => scrollTo(item.id)} className="text-left py-3 px-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium">{item.label}</button>
               ))}
               <button type="button" onClick={onStart} className="btn-primary mt-2 w-full">Start configureren <ArrowRight size={16} /></button>
@@ -120,7 +139,7 @@ export default function HomePage({ onStart }: Props) {
             </p>
             <div className="flex flex-wrap gap-3 pt-1">
               <button type="button" onClick={onStart} className="btn-primary btn-lg">Start configureren <ArrowRight size={18} /></button>
-              <button type="button" onClick={() => scrollTo('hoe-het-werkt')} className="btn-secondary btn-lg">Bekijk hoe het werkt</button>
+              <button type="button" onClick={() => scrollTo('realisaties')} className="btn-secondary btn-lg">Bekijk realisaties</button>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-sm text-[var(--text-muted)]">
               {['3D configuratie', 'Modulaire inrichting', 'Direct overzicht'].map((t) => (
@@ -161,6 +180,48 @@ export default function HomePage({ onStart }: Props) {
                 <p className="mt-2 text-sm text-[var(--text-secondary)] leading-relaxed">{s.text}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="realisaties" className="section bg-[var(--bg-secondary)] border-t border-[var(--border)]">
+        <div className="container-content">
+          <div className="max-w-2xl mb-10">
+            <p className="eyebrow mb-3">Realisaties</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Mobiele detailing-inrichtingen</h2>
+            <p className="mt-3 text-[var(--text-secondary)] text-sm leading-relaxed">
+              Voorbeelden van werkbussen en inrichtingen zoals gerealiseerd door RS Car Detailing.
+              Foto's afkomstig van de officiële website.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+            {REALISATION_IMAGES.map((img) => (
+              <figure
+                key={img.src}
+                className="relative overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] aspect-[4/5] group"
+              >
+                <img
+                  src={`${import.meta.env.BASE_URL}${img.src}`}
+                  alt={img.alt}
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-slow group-hover:scale-[1.03]"
+                />
+              </figure>
+            ))}
+          </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <button type="button" onClick={onStart} className="btn-primary">
+              Start configureren <ArrowRight size={16} />
+            </button>
+            <a
+              href={company.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary"
+            >
+              Meer op rscardetailing.be
+            </a>
           </div>
         </div>
       </section>
@@ -300,6 +361,13 @@ export default function HomePage({ onStart }: Props) {
         <div className="container-content">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
             <div>
+              <img
+                src={`${import.meta.env.BASE_URL}brand/rs-logo-sm.png`}
+                alt="RS Car Cleaning — Tools And Supplies"
+                className="h-8 w-auto object-contain mb-2"
+                width={80}
+                height={40}
+              />
               <span className="block text-[11px] font-semibold tracking-[0.16em] text-[var(--text-muted)]">RS CAR DETAILING</span>
               <span className="block text-sm font-bold">CONFIGURATOR</span>
               <p className="mt-3 text-sm text-[var(--text-muted)] leading-relaxed">{company.description}</p>
