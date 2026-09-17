@@ -1,5 +1,6 @@
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft, Settings, Phone } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
+import { company } from '../config/company';
 
 interface Props {
   onAdminClick: () => void;
@@ -25,7 +26,7 @@ export default function Header({ onAdminClick, onBackHome }: Props) {
             </button>
           )}
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold tracking-[0.12em] text-[var(--text-muted)] leading-none">MOBILE DETAILING</p>
+            <p className="text-[10px] font-semibold tracking-[0.12em] text-[var(--text-muted)] leading-none">{company.shortName.toUpperCase()}</p>
             <p className="text-sm font-bold text-[var(--text-primary)] truncate leading-tight">Configurator</p>
           </div>
         </div>
@@ -42,9 +43,19 @@ export default function Header({ onAdminClick, onBackHome }: Props) {
             </div>
           </div>
         )}
-        <button type="button" onClick={onAdminClick} className="p-2.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface)] rounded-btn transition-colors" title="Admin" aria-label="Admin panel">
-          <Settings size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          <a
+            href={`tel:${company.phoneE164}`}
+            className="p-2.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface)] rounded-btn transition-colors hidden sm:inline-flex"
+            title={`Bel ${company.phoneDisplay}`}
+            aria-label={`Bel ${company.phoneDisplay}`}
+          >
+            <Phone size={18} />
+          </a>
+          <button type="button" onClick={onAdminClick} className="p-2.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface)] rounded-btn transition-colors" title="Admin" aria-label="Admin panel">
+            <Settings size={18} />
+          </button>
+        </div>
       </div>
     </header>
   );
