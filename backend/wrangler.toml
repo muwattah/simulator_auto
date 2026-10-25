@@ -1,0 +1,19 @@
+name = "rs-offerte"
+main = "src/index.mjs"
+compatibility_date = "2026-09-01"
+
+# Populate the real database ID after: npx wrangler d1 create rs-offertes
+[[d1_databases]]
+binding = "DB"
+database_name = "rs-offertes"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[vars]
+FRONTEND_ORIGIN = "https://muwattah.github.io"
+# Replace with your actual deployed worker URL.
+PUBLIC_API_URL = "https://REPLACE_WITH_YOUR_WORKER.workers.dev"
+# FROM_EMAIL must be a verified sender/domain with your e-mail provider.
+# Set ADMIN_EMAIL, FROM_EMAIL, RESEND_API_KEY and APPROVAL_SECRET as secrets with wrangler secret put.
+
+[triggers]
+crons = ["*/15 * * * *"]
