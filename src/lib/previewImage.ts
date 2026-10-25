@@ -102,3 +102,97 @@ export function createConfigurationFallbackImage(
     return null;
   }
 }
+
+/**
+ * Mail-ready composition: actual 3D view next to a compact equipment legend.
+ * No external image service, logos or invented details. The customer sees this exact image.
+ */
+export async function composeConfigurationPreviewImage(
+  sceneDataUrl: string,
+  configuration: DetailingConfiguration,
+  layout: LayoutResult,
+): Promise<string | null> {
+  try {
+    const source = new Image();
+    source.src = sceneDataUrl;
+    await source.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = 1280;
+    canvas.height = 820;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    bg.addColorStop(0, '#2b333d');
+    bg.addColorStop(1, '#111820');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#61c7f3';
+    ctx.font = '700 20px system-ui, sans-serif';
+    ctx.fillText('RS CAR DETAILING', 42, 51);
+    ctx.fillStyle = '#f9fafb';
+    ctx.font = '700 31px system-ui, sans-serif';
+    ctx.fillText('JOUW MOBIELE INSTALLATIE', 42, 103);
+
+    const leftX = 28, topY = 137, leftW = 825, sceneH = 618;
+    // Crop like a professional product photo instead of distorting the rendered scene.
+    const zoom = Math.max(leftW / source.width, sceneH / source.height);
+    const cropW = leftW / zoom, cropH = sceneH / zoom;
+    const sx = (source.width - cropW) / 2, sy = (source.height - cropH) / 2;
+    ctx.drawImage(source, sx, sy, cropW, cropH, leftX, topY, leftW, sceneH);
+    ctx.strokeStyle = '#586573';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(leftX, topY, leftW, sceneH);
+
+    const panelX = 881, panelY = 137, panelW = 369;
+    ctx.fillStyle = 'rgba(12, 18, 25, 0.95)';
+    ctx.fillRect(panelX, panelY, panelW, sceneH);
+    ctx.strokeStyle = '#3b4a59';
+    ctx.strokeRect(panelX, panelY, panelW, sceneH);
+
+    const vehicle = getVehicleCategory(configuration.vehicleCategory);
+    ctx.fillStyle = '#69d0fb';
+    ctx.font = '700 15px system-ui, sans-serif';
+    ctx.fillText('VOERTUIG', panelX + 24, panelY + 38);
+    ctx.fillStyle = '#eff5fa';
+    ctx.font = '600 18px system-ui, sans-serif';
+    ctx.fillText(vehicle?.name || 'Werkbusinstallatie', panelX + 24, panelY + 66);
+    ctx.fillStyle = '#99aabd';
+    ctx.font = '700 15px system-ui, sans-serif';
+    ctx.fillText('GESELECTEERDE ONDERDELEN', panelX + 24, panelY + 111);
+
+    const allParts: string[] = layout.placements
+      .map(item => getProduct(item.productId)?.name || item.productId);
+    const selectedLining = getProduct(configuration.liningId);
+    if (selectedLining && selectedLining.id !== 'lining_none') allParts.push(selectedLining.name);
+    if (configuration.floatValve === true) allParts.push('Vlotter op watertank');
+    if (configuration.installationType === 'installed') allParts.push('Montage door RS Car Detailing');
+    if (configuration.installationType === 'pickup') allParts.push('Zelfmontage / ophaalpakket');
+    const textMaxWidth = panelW - 70;
+    let y = panelY + 146;
+    // Responsive to the number of selected elements; no entries are intentionally omitted.
+    const lineSpacing = allParts.length > 15 ? 23 : allParts.length > 11 ? 28 : 36;
+    const fontSize = allParts.length > 15 ? 12 : allParts.length > 11 ? 13 : 15;
+    for (const name of allParts) {
+      ctx.font = `500 ${fontSize}px system-ui, sans-serif`;
+      let label = name;
+      while (label.length > 5 && ctx.measureText(label).width > textMaxWidth) {
+        label = label.slice(0, -2);
+      }
+      if (label !== name) label += '…';
+      ctx.fillStyle = '#57c6f5';
+      ctx.fillText('✓', panelX + 24, y);
+      ctx.fillStyle = '#e5edf4';
+      ctx.fillText(label, panelX + 47, y);
+      y += lineSpacing;
+    }
+
+    ctx.font = '14px system-ui, sans-serif';
+    ctx.fillStyle = '#9eabb9';
+    ctx.fillText('Indicatieve 3D-visualisatie · montage na controle', 42, 794);
+    return canvas.toDataURL('image/jpeg', 0.80);
+  } catch {
+    return null;
+  }
+}
