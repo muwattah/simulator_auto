@@ -279,7 +279,7 @@ export async function submitQuoteRequest(payload: QuotePayload): Promise<SubmitQ
   }
 
   try {
-    const response = await fetch(`${endpoint.replace(/\\/$/, '')}/api/quotes`, {
+    const response = await fetch(`${(endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint)}/api/quotes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
