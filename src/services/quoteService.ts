@@ -95,6 +95,8 @@ export interface QuotePayload {
   };
   estimatedWaterWeightKg: number;
   layoutWarnings: string[];
+  /** JPEG image of the selected configuration, captured on the client. */
+  previewImageDataUrl: string;
   privacyConsent: boolean;
 }
 
@@ -113,6 +115,7 @@ export function buildQuotePayload(params: {
   estimatedWaterWeightKg: number;
   layoutWarnings: string[];
   privacyConsent: boolean;
+  previewImageDataUrl: string;
 }): QuotePayload {
   const c = params.configuration;
   const cat = getVehicleCategory(c.vehicleCategory);
@@ -174,6 +177,7 @@ export function buildQuotePayload(params: {
     estimatedWaterWeightKg: params.estimatedWaterWeightKg,
     layoutWarnings: params.layoutWarnings,
     privacyConsent: params.privacyConsent,
+    previewImageDataUrl: params.previewImageDataUrl,
   };
 }
 
@@ -236,6 +240,8 @@ export function formatQuoteSummary(payload: QuotePayload): string {
     lines.push(payload.specialRequests.trim());
     lines.push('');
   }
+  lines.push('Een visualisatie van de installatie wordt apart als afbeelding meegeleverd.');
+  lines.push('');
   lines.push('Prijsstatus:');
   if (payload.pricing.status === 'pending') {
     lines.push('- Alle geselecteerde onderdelen: prijs op aanvraag');
