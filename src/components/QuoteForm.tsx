@@ -3,7 +3,7 @@ import { Check, Copy, MessageCircle, Phone, AlertCircle, FileText } from 'lucide
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { company } from '../config/company';
 import ConfigurationPreview from './ConfigurationPreview';
-import { createConfigurationFallbackImage } from '../lib/previewImage';
+import { createConfigurationFallbackImage, composeConfigurationPreviewImage } from '../lib/previewImage';
 import {
   generateConfigurationId,
   buildQuotePayload,
@@ -108,7 +108,11 @@ export default function QuoteForm({ onClose }: Props) {
       };
 
       let previewImageDataUrl = captureRef.current?.() || null;
-      // A real image is always included, even on devices without WebGL support.
+      if (previewImageDataUrl && previewImageDataUrl.length <= 650_000) {
+        const decorated = await composeConfigurationPreviewImage(previewImageDataUrl, configuration, layout);
+        if (decorated && decorated.length <= 650_000) previewImageDataUrl = decorated;
+      }
+      // A truthful 2D preview is included if WebGL or image capture is unavailable.
       if (!previewImageDataUrl || previewImageDataUrl.length > 650_000) {
         previewImageDataUrl = createConfigurationFallbackImage(configuration, layout);
       }
