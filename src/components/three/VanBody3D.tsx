@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { CargoSpaceMeters } from '../../types';
@@ -43,9 +43,9 @@ function Wheel({ position }: { position: [number, number, number] }) {
 }
 
 function RearDoor({
-  side, width, height, depth, open, ghost,
+  side, width, height, rearZ, open, ghost,
 }: {
-  side: number; width: number; height: number; depth: number; open: boolean; ghost: boolean;
+  side: number; width: number; height: number; rearZ: number; open: boolean; ghost: boolean;
 }) {
   const hinge = useRef<THREE.Group>(null);
   useFrame((_, delta) => {
@@ -55,7 +55,7 @@ function RearDoor({
   });
 
   return (
-    <group position={[side * width / 2, 0, -depth]}>
+    <group position={[side * width / 2, 0, rearZ]}>
       <group ref={hinge}>
         <mesh position={[-side * (width / 4), height / 2, -0.015]} castShadow={!ghost}>
           <boxGeometry args={[width / 2 - 0.028, height * 0.95, 0.045]} />
@@ -96,11 +96,6 @@ export default function VanBody3D({ space, settings }: Props) {
   // The translucent shell doesn't write depth; open doors reveal the rear aperture.
   const bodyOpacity = ghost ? 0.105 : 1;
   const sideGlassOpacity = ghost ? 0.06 : 0.58;
-
-  useEffect(() => {
-    // Parametric door pivots animate through useFrame; when body is hidden the
-    // original product meshes remain untouched.
-  }, [settings.doorsOpen]);
 
   return (
     <group>
@@ -194,7 +189,7 @@ export default function VanBody3D({ space, settings }: Props) {
             </group>
           )}
           {/* Split rear doors: hinges are animated and never obscure contents when open. */}
-          <RearDoor side={-1} width={outerW} height={outerH} depth={rearZ}
+          <RearDoor side={-1} width={outerW} height={outerH} rearZ={rearZ}
             open={settings.doorsOpen} ghost={ghost} />
           <RearDoor side={1} width={outerW} height={outerH} depth={rearZ}
             open={settings.doorsOpen} ghost={ghost} />
