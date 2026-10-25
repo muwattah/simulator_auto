@@ -37,9 +37,18 @@ npm test
 npm run build
 ```
 
-## Mail delivery
+## Mail delivery / goedkeuring
 
-**NOT IMPLEMENTED** — GitHub Pages is static. Echte e-mail vereist een veilige server-side API. Geen secrets in de frontend.
+De code voor de beveiligde offerte-mailflow staat in [backend/README.md](backend/README.md).
+Nieuwe aanvragen kunnen een klantbevestiging met alle configuratiegegevens mailen en de
+beheerder een reviewlink sturen. Alleen na expliciete goedkeuring (met prijs en voorwaarden)
+wordt de definitieve offerte aan de klant aangeboden.
+
+**LET OP:** GitHub Pages kan zelf geen e-mails versturen. De Cloudflare Worker,
+D1-database, Resend-afzender en GitHub Actions-variabele `VITE_QUOTE_API_URL` moeten
+eerst worden ingericht. Zolang deze ontbreken, toont het offerteformulier een
+duidelijke foutmelding en beweert het niet dat een mail werd verzonden. Geen secrets
+in de frontend.
 
 ## Demo
 
