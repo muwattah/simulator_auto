@@ -191,7 +191,7 @@ export default function VanBody3D({ space, settings }: Props) {
           {/* Split rear doors: hinges are animated and never obscure contents when open. */}
           <RearDoor side={-1} width={outerW} height={outerH} rearZ={rearZ}
             open={settings.doorsOpen} ghost={ghost} />
-          <RearDoor side={1} width={outerW} height={outerH} depth={rearZ}
+          <RearDoor side={1} width={outerW} height={outerH} rearZ={rearZ}
             open={settings.doorsOpen} ghost={ghost} />
 
           {/* Lower sill & red tail lamps. */}
