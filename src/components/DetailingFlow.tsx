@@ -19,6 +19,7 @@ import {
   getProduct,
 } from '../data/detailingCatalog';
 import LoadSpaceViewer from './LoadSpaceViewer';
+import { vehicleModels } from '../data/vehicleModels';
 import QuoteForm from './QuoteForm';
 import { formatPriceOrPending } from '../lib/pricing';
 import { estimatedWaterWeight } from '../lib/layoutEngine';
@@ -288,6 +289,9 @@ function StepContent() {
   const markVisited = useConfiguratorStore((s) => s.markVisited);
   const {
     setVehicleCategory,
+    setVehicleModel,
+    setVehicleLength,
+    setVehicleRoof,
     setCabType,
     setTank,
     setFloatValve,
@@ -326,6 +330,45 @@ function StepContent() {
             </OptionCard>
           ))}
         </div>
+        {c.vehicleCategory && (
+          <div className="space-y-3 pt-4 border-t border-[var(--border)]">
+            <div>
+              <h3 className="font-semibold text-sm mb-2">Welk merk en model?</h3>
+              <select
+                className="input w-full"
+                aria-label="Merk en model van de bestelwagen"
+                value={c.vehicleModelId ?? ''}
+                onChange={e => setVehicleModel(e.target.value)}
+              >
+                {vehicleModels.filter(model => model.category === c.vehicleCategory).map(model => (
+                  <option key={model.id} value={model.id}>{model.display}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="vehicle-length" className="block text-xs font-semibold mb-2">Wielbasis</label>
+                <select id="vehicle-length" className="input w-full" value={c.vehicleLength ?? 'standard'}
+                  onChange={e => setVehicleLength(e.target.value as 'standard' | 'long')}>
+                  <option value="standard">Standaard (L1)</option>
+                  <option value="long">Lang (L2)</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="vehicle-roof" className="block text-xs font-semibold mb-2">Dakhoogte</label>
+                <select id="vehicle-roof" className="input w-full" value={c.vehicleRoof ?? 'standard'}
+                  onChange={e => setVehicleRoof(e.target.value as 'standard' | 'high')}>
+                  <option value="standard">Normaal (H1)</option>
+                  {c.vehicleCategory !== 'small' && <option value="high">Hoog (H2)</option>}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+              Dit is momenteel een generiek 3D-voertuig met indicatieve laadruimteafmetingen.
+              Geen fabrikant-CAD of gegarandeerde maatvoering. De gekozen uitrusting blijft specifiek voor detailing.
+            </p>
+          </div>
+        )}
       </div>
     );
   }
