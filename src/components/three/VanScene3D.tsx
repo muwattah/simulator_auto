@@ -4,6 +4,7 @@ import { OrbitControls, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import type { CargoSpaceMeters, PlacedItem } from '../../types';
 import { ProductMeshSwitcher } from './DetailModels';
+import VanBody3D, { type VanViewSettings } from './VanBody3D';
 
 export type CameraPreset = 'overview' | 'left' | 'right' | 'rear' | 'top';
 
@@ -16,6 +17,7 @@ interface Props {
   cameraPreset: CameraPreset;
   /** Studio presentation is an open equipment platform, not an exact van model. */
   presentationMode?: boolean;
+  vanSettings?: VanViewSettings;
   /** Receives a synchronous browser JPEG capture function once WebGL is ready. */
   onCaptureReady?: (capture: (() => string | null) | null) => void;
 }
@@ -155,10 +157,10 @@ function CameraController({ preset, space, presentationMode }: {
   const { length: L, width: W, height: H } = space;
   useEffect(() => {
     const targets: Record<CameraPreset, { pos: [number, number, number]; look: [number, number, number] }> = {
-      rear: { pos: [0, H * 0.83, -L * 1.47], look: [0, H * 0.40, -L * 0.04] },
+      rear: { pos: [0, H * 0.89, -L * 1.6], look: [0, H * 0.43, -L * 0.03] },
       overview: {
-        pos: [W * (presentationMode ? 1.42 : 1.12), H * 1.24, -L * 1.27],
-        look: [0, H * 0.41, 0],
+        pos: [W * (presentationMode ? 2.20 : 1.93), H * 1.53, -L * 1.37],
+        look: [0, H * 0.40, L * 0.16],
       },
       left: { pos: [-W * 1.65, H * 0.92, -L * 0.38], look: [0, H * 0.40, 0] },
       right: { pos: [W * 1.65, H * 0.92, -L * 0.38], look: [0, H * 0.40, 0] },
@@ -197,7 +199,7 @@ function CaptureBridge({ onCaptureReady }: {
 function SceneContent(props: Props) {
   const {
     space, placements, liningVariant, selectedProductId, onSelectProduct,
-    cameraPreset, presentationMode = false, onCaptureReady,
+    cameraPreset, presentationMode = false, onCaptureReady, vanSettings,
   } = props;
   return (
     <>
@@ -214,6 +216,14 @@ function SceneContent(props: Props) {
         <meshStandardMaterial color="#222932" roughness={0.74} metalness={0.04} />
       </mesh>
       <CargoShell space={space} liningVariant={liningVariant} presentationMode={presentationMode} />
+      <VanBody3D
+        space={space}
+        settings={vanSettings ?? {
+          body: 'transparent',
+          roofVisible: true,
+          doorsOpen: true,
+        }}
+      />
       {placements.map(item => (
         <ProductMeshSwitcher
           key={item.productId}
@@ -224,7 +234,7 @@ function SceneContent(props: Props) {
       ))}
       <ContactShadows position={[0, -0.18, 0]} opacity={0.42} scale={12} blur={2.3} far={4} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.08}
-        minDistance={1.2} maxDistance={14} maxPolarAngle={Math.PI * 0.49}
+        minDistance={1.2} maxDistance={24} maxPolarAngle={Math.PI * 0.49}
         target={[0, space.height * 0.35, -space.length * 0.1]} />
       <CameraController preset={cameraPreset} space={space} presentationMode={presentationMode} />
       {onCaptureReady && <CaptureBridge onCaptureReady={onCaptureReady} />}
