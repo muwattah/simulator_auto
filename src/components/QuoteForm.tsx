@@ -1,7 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { Check, Copy, MessageCircle, Phone, AlertCircle, FileText } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { company } from '../config/company';
+import ConfigurationPreview from './ConfigurationPreview';
+import { createConfigurationFallbackImage } from '../lib/previewImage';
 import {
   generateConfigurationId,
   buildQuotePayload,
@@ -67,6 +69,10 @@ export default function QuoteForm({ onClose }: Props) {
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const captureRef = useRef<(() => string | null) | null>(null);
+  const handleCaptureReady = useCallback((capture: (() => string | null) | null) => {
+    captureRef.current = capture;
+  }, []);
 
   const pricing = useMemo(() => getPricing(), [getPricing, configuration]);
   const layout = useMemo(() => getLayout(), [getLayout, configuration]);
@@ -101,6 +107,16 @@ export default function QuoteForm({ onClose }: Props) {
         remarks: form.remarks.trim() || undefined,
       };
 
+      let previewImageDataUrl = captureRef.current?.() || null;
+      // A real image is always included, even on devices without WebGL support.
+      if (!previewImageDataUrl || previewImageDataUrl.length > 650_000) {
+        previewImageDataUrl = createConfigurationFallbackImage(configuration, layout);
+      }
+      if (!previewImageDataUrl) {
+        setSubmissionError('De afbeelding kon niet worden gemaakt. Probeer opnieuw of neem contact op.');
+        return;
+      }
+
       const weight = buildSnapshot().estimatedWaterWeightKg;
       const finalPayload = buildQuotePayload({
         configurationId,
@@ -111,6 +127,7 @@ export default function QuoteForm({ onClose }: Props) {
         estimatedWaterWeightKg: weight,
         layoutWarnings: layout.warnings,
         privacyConsent: form.privacyConsent,
+        previewImageDataUrl,
       });
 
       const submitResult = await submitQuoteRequest(finalPayload);
@@ -167,6 +184,17 @@ export default function QuoteForm({ onClose }: Props) {
           </div>
         </div>
 
+<div className="card p-3">
+          <img
+            src={result.payload.previewImageDataUrl}
+            alt="Afbeelding van jouw gekozen mobiele installatie"
+            className="w-full rounded-lg object-contain"
+          />
+          <p className="text-xs text-[var(--text-muted)] mt-2">
+            Dezelfde visualisatie wordt meegestuurd met je aanvraag en offerte.
+          </p>
+        </div>
+
         <div className="card p-5">
           <div className="flex items-center justify-between gap-3 mb-3">
             <h4 className="font-semibold flex items-center gap-2">
@@ -216,9 +244,11 @@ export default function QuoteForm({ onClose }: Props) {
       <div>
         <h3 className="text-lg font-semibold text-[var(--text-primary)]">Offerteaanvraag</h3>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Vul uw gegevens in. Uw configuratie ({vehicleLabel}) wordt meegestuurd met een unieke referentie.
+          Vul uw gegevens in. Uw configuratie ({vehicleLabel}) en een afbeelding van uw installatie worden meegestuurd. De definitieve offerte volgt na onze goedkeuring.
         </p>
       </div>
+
+      <ConfigurationPreview onCaptureReady={handleCaptureReady} />
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
