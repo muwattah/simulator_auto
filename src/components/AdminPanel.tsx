@@ -15,13 +15,13 @@ export default function AdminPanel({ onClose }: Props) {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <header className="bg-industrial-900 text-white px-4 py-4 flex items-center justify-between">
-        <h1 className="font-bold text-lg">Admin Paneel</h1>
+        <h1 className="font-bold text-lg">Lokaal demo-overzicht</h1>
         <button onClick={onClose} className="p-2 hover:bg-industrial-700 rounded-lg">
           <X size={20} />
         </button>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6"><p className="text-xs text-[var(--text-muted)] mb-4">Dit scherm toont alleen lokaal opgeslagen oude demo-aanvragen. Echte offerteaanvragen en goedkeuring lopen via de beveiligde mailservice en de persoonlijke link in de beheerdersmail.</p>
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setTab('quotes')}
