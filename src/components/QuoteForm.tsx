@@ -9,7 +9,6 @@ import {
   submitQuoteRequest,
   type QuotePayload,
 } from '../services/quoteService';
-import type { Customer } from '../types';
 
 interface Props {
   onClose?: () => void;
@@ -55,7 +54,6 @@ export default function QuoteForm({ onClose }: Props) {
   const configuration = useConfiguratorStore((s) => s.configuration);
   const getPricing = useConfiguratorStore((s) => s.getPricing);
   const getLayout = useConfiguratorStore((s) => s.getLayout);
-  const submitQuoteStore = useConfiguratorStore((s) => s.submitQuote);
   const vehicleLabel = useConfiguratorStore((s) => s.getVehicleLabel);
   const buildSnapshot = useConfiguratorStore((s) => s.buildSnapshot);
 
@@ -68,6 +66,7 @@ export default function QuoteForm({ onClose }: Props) {
     message: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const pricing = useMemo(() => getPricing(), [getPricing, configuration]);
   const layout = useMemo(() => getLayout(), [getLayout, configuration]);
@@ -89,6 +88,7 @@ export default function QuoteForm({ onClose }: Props) {
     if (Object.keys(errs).length > 0) return;
 
     setSubmitting(true);
+    setSubmissionError(null);
     try {
       const configurationId = generateConfigurationId();
       const createdAt = new Date().toISOString();
@@ -113,25 +113,25 @@ export default function QuoteForm({ onClose }: Props) {
         privacyConsent: form.privacyConsent,
       });
 
-      const summary = formatQuoteSummary(finalPayload);
       const submitResult = await submitQuoteRequest(finalPayload);
+      if (!submitResult.ok) {
+        setSubmissionError(submitResult.error);
+        return;
+      }
 
-      const legacyCustomer: Customer = {
-        firstName: form.name.trim().split(/\s+/)[0] || form.name.trim(),
-        lastName: form.name.trim().split(/\s+/).slice(1).join(' ') || '',
-        company: form.company.trim() || undefined,
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        postcode: form.location.trim(),
-        remarks: form.remarks.trim() || undefined,
+      // Only the server-issued reference can identify an actual saved request.
+      const savedPayload = {
+        ...finalPayload,
+        configurationId: submitResult.configurationId,
+        createdAt: submitResult.createdAt,
       };
-      submitQuoteStore(legacyCustomer);
-
       setResult({
-        payload: finalPayload,
-        summary,
-        message: submitResult.ok ? submitResult.message : submitResult.error,
+        payload: savedPayload,
+        summary: formatQuoteSummary(savedPayload),
+        message: submitResult.message,
       });
+    } catch {
+      setSubmissionError('Er is iets misgelopen. Probeer opnieuw of neem rechtstreeks contact op.');
     } finally {
       setSubmitting(false);
     }
@@ -205,7 +205,7 @@ export default function QuoteForm({ onClose }: Props) {
         )}
 
         <p className="text-xs text-[var(--text-muted)] text-center">
-          Automatische e-mailverzending is nog niet actief. Deel de referentie of samenvatting via WhatsApp of telefoon.
+          De ontvangstbevestiging is nog geen definitieve offerte. Die volgt pas nadat RS Car Detailing je aanvraag heeft gecontroleerd en goedgekeurd.
         </p>
       </div>
     );
@@ -347,9 +347,15 @@ export default function QuoteForm({ onClose }: Props) {
         </p>
       )}
 
+      {submissionError && (
+        <p role="alert" className="text-sm text-[var(--danger)] flex items-start gap-2">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" /> {submissionError}
+        </p>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <button type="submit" className="btn-primary flex-1 justify-center" disabled={submitting}>
-          {submitting ? 'Bezig…' : 'Aanvraag voorbereiden'}
+          {submitting ? 'Aanvraag verzenden…' : 'Aanvraag indienen'}
         </button>
         {onClose && (
           <button type="button" onClick={onClose} className="btn-ghost">
@@ -359,7 +365,7 @@ export default function QuoteForm({ onClose }: Props) {
       </div>
 
       <p className="text-xs text-[var(--text-muted)]">
-        Prijzen worden op maat bepaald. Er worden geen bedragen automatisch doorgestuurd als definitieve offerte.
+        Je ontvangt een ontvangstbevestiging met je gekozen onderdelen. Na goedkeuring door RS Car Detailing ontvang je de definitieve offerte per e-mail.
       </p>
     </form>
   );
