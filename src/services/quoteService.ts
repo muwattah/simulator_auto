@@ -18,6 +18,7 @@ import type {
 } from '../types';
 import { getProduct, getVehicleCategory } from '../data/detailingCatalog';
 import { company } from '../config/company';
+import { getVehicleModel } from '../data/vehicleModels';
 
 /** Unieke configuratiereferentie: RS-2026-A1B2C3D4 */
 export function generateConfigurationId(): string {
@@ -55,6 +56,10 @@ export interface QuotePayload {
   vehicle: {
     categoryId: string | null;
     categoryName: string | null;
+    modelName?: string | null;
+    modelId?: string | null;
+    wheelbase?: string;
+    roofHeight?: string;
     cabType: string | null;
   };
   systems: {
@@ -136,6 +141,10 @@ export function buildQuotePayload(params: {
     vehicle: {
       categoryId: c.vehicleCategory,
       categoryName: cat?.name ?? null,
+      modelName: getVehicleModel(c.vehicleModelId)?.display ?? null,
+      modelId: c.vehicleModelId ?? null,
+      wheelbase: c.vehicleLength === 'long' ? 'L2 / lang' : 'L1 / standaard',
+      roofHeight: c.vehicleRoof === 'high' ? 'H2 / hoog' : 'H1 / standaard',
       cabType: c.cabType,
     },
     systems: {
@@ -199,6 +208,9 @@ export function formatQuoteSummary(payload: QuotePayload): string {
   lines.push('');
   lines.push('Voertuig:');
   lines.push(`- Type: ${payload.vehicle.categoryName ?? '—'}`);
+  lines.push(`- Merk/model: ${payload.vehicle.modelName ?? '—'}`);
+  lines.push(`- Wielbasis: ${payload.vehicle.wheelbase ?? '—'}`);
+  lines.push(`- Dakhoogte: ${payload.vehicle.roofHeight ?? '—'}`);
   lines.push(`- Cabine: ${payload.vehicle.cabType ?? '—'}`);
   lines.push('');
   lines.push('Water:');
@@ -326,6 +338,9 @@ export function snapshotFromPayload(payload: QuotePayload): ConfigurationSnapsho
     createdAt: payload.createdAt,
     vehicleCategory: payload.vehicle.categoryId as ConfigurationSnapshot['vehicleCategory'],
     cabType: payload.vehicle.cabType as ConfigurationSnapshot['cabType'],
+    vehicleModelId: payload.vehicle.modelId ?? null,
+    vehicleLength: payload.vehicle.wheelbase?.startsWith('L2') ? 'long' : 'standard',
+    vehicleRoof: payload.vehicle.roofHeight?.startsWith('H2') ? 'high' : 'standard',
     tank: payload.systems.tankId,
     floatValve: payload.systems.floatValve,
     pressureWasher: payload.systems.pressureWasherId,
