@@ -634,8 +634,8 @@ export default function DetailingFlow() {
             </div>
           </div>
         </div>
-        <div className="lg:col-span-6"><LoadSpaceViewer /></div>
-        <div className="lg:col-span-3"><ConfigSummary /></div>
+        <div className="lg:col-span-7"><LoadSpaceViewer /></div>
+        <div className="lg:col-span-2"><ConfigSummary /></div>
       </div>
 
       <div className="lg:hidden">
