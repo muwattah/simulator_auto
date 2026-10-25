@@ -9,11 +9,14 @@ import type {
   VehicleCategory,
   CabType,
   InstallationType,
+  VehicleLength,
+  VehicleRoof,
 } from '../types';
 import { calculatePricing } from '../lib/pricing';
 import { computeLayout, estimatedWaterWeight, getCargoSpace } from '../lib/layoutEngine';
 import { STEP_ORDER, getVehicleCategory, getProduct } from '../data/detailingCatalog';
 import { generateConfigurationId } from '../services/quoteService';
+import { defaultVehicleModel, getVehicleModel } from '../data/vehicleModels';
 
 interface State {
   step: ConfigStep;
@@ -26,6 +29,9 @@ interface State {
   prevStep: () => void;
   markVisited: (step: ConfigStep) => void;
   setVehicleCategory: (c: VehicleCategory) => void;
+  setVehicleModel: (id: string) => void;
+  setVehicleLength: (value: VehicleLength) => void;
+  setVehicleRoof: (value: VehicleRoof) => void;
   setCabType: (c: CabType) => void;
   setTank: (id: string | null) => void;
   setFloatValve: (v: boolean | null) => void;
@@ -58,6 +64,9 @@ interface State {
 const initialConfig: DetailingConfiguration = {
   vehicleCategory: null,
   cabType: null,
+  vehicleModelId: null,
+  vehicleLength: 'standard',
+  vehicleRoof: 'standard',
   tankId: null,
   floatValve: null,
   pressureWasherId: null,
@@ -108,10 +117,30 @@ export const useConfiguratorStore = create<State>()(
           configuration: {
             ...s.configuration,
             vehicleCategory: c,
+            vehicleModelId: defaultVehicleModel(c).id,
+            vehicleLength: 'standard',
+            vehicleRoof: 'standard',
             cabType: c === 'trailer' ? 'single' : s.configuration.cabType,
           },
         })),
 
+      setVehicleModel: (id) => {
+        const vehicle = getVehicleModel(id);
+        if (!vehicle) return;
+        set((s) => ({
+          configuration: {
+            ...s.configuration,
+            vehicleCategory: vehicle.category,
+            vehicleModelId: vehicle.id,
+          },
+        }));
+      },
+      setVehicleLength: (vehicleLength) => set(s => ({
+        configuration: { ...s.configuration, vehicleLength },
+      })),
+      setVehicleRoof: (vehicleRoof) => set(s => ({
+        configuration: { ...s.configuration, vehicleRoof },
+      })),
       setCabType: (c) => set((s) => ({ configuration: { ...s.configuration, cabType: c } })),
 
       setTank: (id) =>
@@ -198,10 +227,13 @@ export const useConfiguratorStore = create<State>()(
       getPricing: () => calculatePricing(get().configuration),
       getLayout: () => computeLayout(get().configuration),
       getCargoSpace: () =>
-        getCargoSpace(get().configuration.vehicleCategory, get().configuration.cabType),
+        getCargoSpace(
+          get().configuration.vehicleCategory, get().configuration.cabType,
+          get().configuration.vehicleLength, get().configuration.vehicleRoof
+        ),
 
       getVehicleLabel: () => {
-        const { vehicleCategory, cabType } = get().configuration;
+        const { vehicleCategory, cabType, vehicleModelId, vehicleLength, vehicleRoof } = get().configuration;
         const cat = getVehicleCategory(vehicleCategory);
         if (!cat) return 'Nog geen voertuig';
         const cab =
@@ -212,7 +244,11 @@ export const useConfiguratorStore = create<State>()(
               : cabType === 'single'
                 ? ' · Enkele cabine'
                 : '';
-        return `${cat.name}${cab}`;
+        const selected = getVehicleModel(vehicleModelId);
+        const model = selected?.category === vehicleCategory ? selected.display : cat.name;
+        const length = vehicleLength === 'long' ? ' · Lange wielbasis' : ' · Standaard wielbasis';
+        const roof = vehicleRoof === 'high' ? ' · Hoog dak' : '';
+        return `${model}${cab}${length}${roof}`;
       },
 
       buildSnapshot: () => {
@@ -224,6 +260,9 @@ export const useConfiguratorStore = create<State>()(
           createdAt: new Date().toISOString(),
           vehicleCategory: c.vehicleCategory,
           cabType: c.cabType,
+          vehicleModelId: c.vehicleModelId ?? null,
+          vehicleLength: c.vehicleLength ?? 'standard',
+          vehicleRoof: c.vehicleRoof ?? 'standard',
           tank: c.tankId,
           floatValve: c.floatValve,
           pressureWasher: c.pressureWasherId,
