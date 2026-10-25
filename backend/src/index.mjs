@@ -2,6 +2,8 @@
  * RS Car Detailing - secure quote request / approval worker.
  * Backend-only credentials. Never expose admin approval tokens to the customer.
  */
+import { configurationAttachment, renderVisualEmail } from './mailPresentation.mjs';
+
 const EMAIL_API = 'https://api.resend.com/emails';
 const VAT = 0.21;
 const DAY = 86400000;
@@ -79,6 +81,10 @@ function validRequest(p) {
     ['small','medium','large','trailer'].includes(p.vehicle?.categoryId) &&
     Array.isArray(p.extras) && p.extras.length <= 30 &&
     Array.isArray(p.layoutWarnings) && p.layoutWarnings.length <= 30 &&
+    typeof p.previewImageDataUrl === 'string' &&
+    p.previewImageDataUrl.length >= 64 &&
+    p.previewImageDataUrl.length <= 750_000 &&
+    /^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/=]*$/.test(p.previewImageDataUrl) &&
     p.privacyConsent === true
   );
 }
@@ -124,7 +130,7 @@ function html(body, status = 200) {
     },
   });
 }
-async function sendEmail(env, { to, subject, text, replyTo, key }) {
+async function sendEmail(env, { to, subject, text, html, attachments, replyTo, key }) {
   const response = await fetch(EMAIL_API, {
     method: 'POST',
     headers: {
@@ -134,6 +140,8 @@ async function sendEmail(env, { to, subject, text, replyTo, key }) {
     },
     body: JSON.stringify({
       from: env.FROM_EMAIL, to: [to], subject, text,
+      ...(html ? { html } : {}),
+      ...(attachments ? { attachments } : {}),
       ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   });
@@ -142,6 +150,7 @@ async function sendEmail(env, { to, subject, text, replyTo, key }) {
 async function notify(env, row) {
   const p = JSON.parse(row.payload_json);
   const summary = summaryFromPayload(p);
+  const attachment = configurationAttachment(p.previewImageDataUrl, row.id);
   const reviewUrl = env.PUBLIC_API_URL.replace(/\/$/, '') + '/review?id=' + encodeURIComponent(row.id) +
     '&token=' + await approvalToken(env, row.id);
   let adminSent = !!row.admin_sent_at;
@@ -154,6 +163,15 @@ async function notify(env, row) {
         subject: 'Nieuwe offerteaanvraag ' + row.id,
         text: 'Nieuwe offerteaanvraag ontvangen. Controleer de gegevens en keur pas goed nadat je de offerteprijs hebt bepaald.\n\n' +
           'BEKIJK EN KEUR GOED:\n' + reviewUrl + '\n\n' + summary,
+        html: renderVisualEmail({
+          title: 'Nieuwe offerteaanvraag ' + row.id,
+          intro: 'Een klant heeft een installatie samengesteld. Bekijk de gekozen onderdelen en bepaal de offerteprijs. Alleen jouw goedkeuring verstuurt een definitieve offerte.',
+          summary,
+          callToActionUrl: reviewUrl,
+          callToActionLabel: 'Aanvraag beoordelen en goedkeuren',
+          note: 'De getoonde 3D-afbeelding en afmetingen zijn indicatief.',
+        }),
+        attachments: [attachment],
         key: 'admin-' + row.id,
       });
       await env.DB.prepare('UPDATE quote_requests SET admin_sent_at = ? WHERE id = ?').bind(new Date().toISOString(), row.id).run();
@@ -172,6 +190,13 @@ async function notify(env, row) {
           'We hebben je aanvraag ontvangen. Hieronder vind je alle door jou opgegeven configuratiegegevens. ' +
           'Dit is nog GEEN definitieve offerte. RS Car Detailing controleert je aanvraag en stuurt je zo spoedig mogelijk de offerte na goedkeuring.\n\n' +
           summary + '\n\nMet vriendelijke groeten,\nRS Car Detailing',
+        html: renderVisualEmail({
+          title: 'We hebben jouw aanvraag ontvangen',
+          intro: 'Beste ' + safeText(p.customer.name, 160) + ',\n\nHier zie je de door jou gekozen installatie. Je aanvraag wordt gecontroleerd en je ontvangt zo spoedig mogelijk de definitieve offerte nadat RS Car Detailing deze heeft goedgekeurd. Dit bericht is nog geen definitieve offerte.',
+          summary,
+          note: 'Je hoeft voorlopig niets te doen. Wij nemen contact op wanneer de offerte is nagekeken.',
+        }),
+        attachments: [attachment],
         key: 'receipt-' + row.id,
       });
       await env.DB.prepare('UPDATE quote_requests SET customer_sent_at = ? WHERE id = ?').bind(new Date().toISOString(), row.id).run();
@@ -185,9 +210,9 @@ async function notify(env, row) {
 async function submit(request, env, origin) {
   if (!configOk(env)) return json({ ok: false, error: 'Online aanvragen zijn nog niet geconfigureerd.' }, 503, origin);
   const length = Number(request.headers.get('Content-Length') || 0);
-  if (length > 30000) return json({ ok: false, error: 'Aanvraag te groot.' }, 413, origin);
+  if (length > 850_000) return json({ ok: false, error: 'Aanvraag te groot.' }, 413, origin);
   const raw = await request.text();
-  if (raw.length > 30000) return json({ ok: false, error: 'Aanvraag te groot.' }, 413, origin);
+  if (raw.length > 850_000) return json({ ok: false, error: 'Aanvraag te groot.' }, 413, origin);
   let input;
   try { input = JSON.parse(raw); } catch { return json({ ok: false, error: 'Ongeldige aanvraag.' }, 400, origin); }
   if (!validRequest(input)) return json({ ok: false, error: 'Controleer je naam, e-mail, telefoon en voertuigkeuze.' }, 400, origin);
@@ -272,6 +297,17 @@ async function postReview(request, env) {
         'Offertevoorwaarden / toelichting:\n' + (message || 'Geen extra voorwaarden opgegeven.') +
         '\n\n--- Jouw configuratie ---\n' + summaryFromPayload(p) +
         '\n\nMet vriendelijke groeten,\nRS Car Detailing',
+      html: renderVisualEmail({
+        title: 'Jouw definitieve offerte ' + id,
+        intro: 'Beste ' + safeText(p.customer.name, 160) + ',\n\nJe configuratie is gecontroleerd. Hieronder vind je de definitieve offerte, inclusief jouw gekozen installatie.',
+        summary: summaryFromPayload(p),
+        pricingDetails: 'Bedrag excl. 21% btw: ' + euros(cents) +
+          '\nBtw (21%): ' + euros(vat) +
+          '\nTotaal incl. btw: ' + euros(cents + vat) +
+          '\n\nVoorwaarden / toelichting: ' + (message || 'Geen extra voorwaarden opgegeven.'),
+        note: 'Neem contact op met RS Car Detailing bij vragen over deze offerte.',
+      }),
+      attachments: [configurationAttachment(p.previewImageDataUrl, id)],
       key: 'approved-' + id,
     });
     await env.DB.prepare("UPDATE quote_requests SET status = 'sent', approved_at = ?, last_error = NULL WHERE id = ?")
