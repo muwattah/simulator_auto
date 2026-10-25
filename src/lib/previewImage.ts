@@ -54,15 +54,15 @@ export function createConfigurationFallbackImage(
 
     const palette = ['#e2e8f0', '#7dd3fc', '#fbba5a', '#82d7b6', '#b0b7ec'];
     const columnWidth = 180;
-    const chosen = layout.placements.slice(0, 15);
+    const chosen = layout.placements.slice(0, 18);
     for (const [index, item] of chosen.entries()) {
       const product = getProduct(item.productId);
       const col = index % 3, row = Math.floor(index / 3);
       const x = floorX + 18 + col * (columnWidth + 10);
-      const y = floorY + 24 + row * 75;
+      const y = floorY + 17 + row * 64;
       ctx.fillStyle = palette[index % palette.length];
       ctx.globalAlpha = 0.88;
-      ctx.fillRect(x, y, columnWidth, 58);
+      ctx.fillRect(x, y, columnWidth, 52);
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#101821';
       ctx.font = '600 14px system-ui, sans-serif';
