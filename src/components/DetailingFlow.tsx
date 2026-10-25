@@ -311,6 +311,11 @@ function StepContent() {
     setSpecialRequests,
   } = useConfiguratorStore();
 
+  const categoryCompatible = (id: string | null): boolean => {
+    const eligible = getProduct(id)?.compatibility.vehicleCategories;
+    return !eligible || !c.vehicleCategory || eligible.includes(c.vehicleCategory);
+  };
+
   if (step === 'vehicle') {
     return (
       <div className="space-y-3">
@@ -407,6 +412,7 @@ function StepContent() {
               selected={c.tankId === o.id}
               onClick={() => { setTank(o.id); markVisited('tank'); }}
               title={o.label}
+              disabled={!categoryCompatible(o.id)}
             />
           ))}
         </div>
@@ -450,7 +456,8 @@ function StepContent() {
         </h2>
         <div className="grid sm:grid-cols-2 gap-2">
           {compressorOptions.map((o) => (
-            <OptionCard key={String(o.id)} selected={c.compressorId === o.id} onClick={() => { setCompressor(o.id); markVisited('compressor'); }} title={o.label} />
+            <OptionCard key={String(o.id)} selected={c.compressorId === o.id} onClick={() => { setCompressor(o.id); markVisited('compressor'); }} title={o.label}
+              disabled={!categoryCompatible(o.id)} />
           ))}
         </div>
         {c.compressorId && (
@@ -475,7 +482,8 @@ function StepContent() {
         </h2>
         <div className="grid sm:grid-cols-2 gap-2">
           {generatorOptions.map((o) => (
-            <OptionCard key={String(o.id)} selected={c.generatorId === o.id} onClick={() => { setGenerator(o.id); markVisited('power'); }} title={o.label} />
+            <OptionCard key={String(o.id)} selected={c.generatorId === o.id} onClick={() => { setGenerator(o.id); markVisited('power'); }} title={o.label}
+              disabled={!categoryCompatible(o.id)} />
           ))}
         </div>
         <h3 className="font-semibold">Stroomhaspel</h3>
