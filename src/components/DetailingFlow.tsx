@@ -337,7 +337,7 @@ function StepContent() {
               <select
                 className="input w-full"
                 aria-label="Merk en model van de bestelwagen"
-                value={c.vehicleModelId ?? ''}
+                value={c.vehicleModelId ?? vehicleModels.find(model => model.category === c.vehicleCategory)?.id ?? ''}
                 onChange={e => setVehicleModel(e.target.value)}
               >
                 {vehicleModels.filter(model => model.category === c.vehicleCategory).map(model => (
