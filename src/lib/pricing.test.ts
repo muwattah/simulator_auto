@@ -1,5 +1,5 @@
 import { calculatePricing, formatPriceOrPending } from './pricing';
-import { computeLayout, estimatedWaterWeight } from './layoutEngine';
+import { computeLayout, estimatedWaterWeight, getCargoSpace } from './layoutEngine';
 import type { DetailingConfiguration } from '../types';
 
 const empty: DetailingConfiguration = {
@@ -82,6 +82,25 @@ function assert(cond: boolean, msg: string) {
   const cfg = { ...empty, vehicleCategory: 'small' as const, tankId: 'tank_800' };
   const layout = computeLayout(cfg);
   assert(layout.requiresInstallerReview || layout.warnings.length > 0, 'small+large tank warning');
+}
+
+// Vehicle size controls change the provisional visual cargo dimensions
+{
+  const base = getCargoSpace('medium', 'single', 'standard', 'standard');
+  const long = getCargoSpace('medium', 'single', 'long', 'standard');
+  const high = getCargoSpace('medium', 'single', 'standard', 'high');
+  assert(long.length > base.length, 'long wheelbase should increase cargo length');
+  assert(high.height > base.height, 'high roof should increase cargo height');
+  assert(high.isDemo, 'vehicle dimensions must remain explicitly indicative');
+
+  const config = {
+    ...empty,
+    vehicleModelId: 'ford-transit-custom',
+    vehicleLength: 'long' as const,
+    vehicleRoof: 'high' as const,
+  };
+  const layout = computeLayout(config);
+  assert(layout.fits && Array.isArray(layout.placements), 'model selection keeps layout available');
 }
 
 // format pending
