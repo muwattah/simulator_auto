@@ -91,17 +91,22 @@ function collectProducts(config: DetailingConfiguration): DetailingProduct[] {
 
 export function getCargoSpace(
   vehicleCategory: DetailingConfiguration['vehicleCategory'],
-  cabType: DetailingConfiguration['cabType']
+  cabType: DetailingConfiguration['cabType'],
+  lengthVariant: DetailingConfiguration['vehicleLength'] = 'standard',
+  roofVariant: DetailingConfiguration['vehicleRoof'] = 'standard',
 ): CargoSpaceMeters {
   const cat = getVehicleCategory(vehicleCategory);
   if (!cat) {
     return { length: 2.9, width: 1.7, height: 1.4, isDemo: true, vehicleCategory: null, cabType: null };
   }
-  const factor = cabType === 'double' ? cat.doubleCabLengthFactor : 1;
+  const cabinFactor = cabType === 'double' ? cat.doubleCabLengthFactor : 1;
+  // Indicative only: final load-space length/roof must come from actual model data.
+  const lengthFactor = lengthVariant === 'long' ? 1.15 : 1;
+  const roofOffset = roofVariant === 'high' && vehicleCategory !== 'small' ? 0.22 : 0;
   return {
-    length: cat.cargo.length * factor,
+    length: cat.cargo.length * cabinFactor * lengthFactor,
     width: cat.cargo.width,
-    height: cat.cargo.height,
+    height: cat.cargo.height + roofOffset,
     isDemo: true,
     vehicleCategory,
     cabType,
@@ -109,7 +114,7 @@ export function getCargoSpace(
 }
 
 export function computeLayout(config: DetailingConfiguration): LayoutResult {
-  const space = getCargoSpace(config.vehicleCategory, config.cabType);
+  const space = getCargoSpace(config.vehicleCategory, config.cabType, config.vehicleLength, config.vehicleRoof);
   const products = collectProducts(config);
   const placements: PlacedItem[] = [];
   const warnings: string[] = [];

@@ -2,6 +2,8 @@
 
 export type VehicleCategory = 'small' | 'medium' | 'large' | 'trailer';
 export type CabType = 'single' | 'double';
+export type VehicleLength = 'standard' | 'long';
+export type VehicleRoof = 'standard' | 'high';
 export type PriceStatus = 'known' | 'pending';
 export type InstallationType = 'installed' | 'pickup' | null;
 
@@ -130,6 +132,10 @@ export interface CargoSpaceMeters {
 export interface DetailingConfiguration {
   vehicleCategory: VehicleCategory | null;
   cabType: CabType | null;
+  /** Named model selection; dimensions are provisional until verified. */
+  vehicleModelId?: string | null;
+  vehicleLength?: VehicleLength;
+  vehicleRoof?: VehicleRoof;
   tankId: string | null;
   floatValve: boolean | null;
   pressureWasherId: string | null;
@@ -190,6 +196,9 @@ export interface ConfigurationSnapshot {
   createdAt: string;
   vehicleCategory: VehicleCategory | null;
   cabType: CabType | null;
+  vehicleModelId?: string | null;
+  vehicleLength?: VehicleLength;
+  vehicleRoof?: VehicleRoof;
   tank: string | null;
   floatValve: boolean | null;
   pressureWasher: string | null;
