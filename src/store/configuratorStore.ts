@@ -99,12 +99,14 @@ export const useConfiguratorStore = create<State>()(
 
       nextStep: () => {
         const idx = STEP_ORDER.indexOf(get().step);
-        if (idx < STEP_ORDER.length - 1) set({ step: STEP_ORDER[idx + 1] });
+        const next = STEP_ORDER[idx + (get().configuration.vehicleCategory === 'trailer' && get().step === 'vehicle' ? 2 : 1)];
+        if (next) set({ step: next });
       },
 
       prevStep: () => {
         const idx = STEP_ORDER.indexOf(get().step);
-        if (idx > 0) set({ step: STEP_ORDER[idx - 1] });
+        const previous = STEP_ORDER[idx - (get().configuration.vehicleCategory === 'trailer' && get().step === 'tank' ? 2 : 1)];
+        if (previous) set({ step: previous });
       },
 
       markVisited: (step) =>
@@ -112,17 +114,33 @@ export const useConfiguratorStore = create<State>()(
           visitedSteps: s.visitedSteps.includes(step) ? s.visitedSteps : [...s.visitedSteps, step],
         })),
 
-      setVehicleCategory: (c) =>
-        set((s) => ({
-          configuration: {
-            ...s.configuration,
-            vehicleCategory: c,
-            vehicleModelId: defaultVehicleModel(c).id,
-            vehicleLength: 'standard',
-            vehicleRoof: 'standard',
-            cabType: c === 'trailer' ? 'single' : s.configuration.cabType,
-          },
-        })),
+      setVehicleCategory: (category) =>
+        set((s) => {
+          // Known category exclusions are enforced; exact model fitment remains indicative.
+          const allowed = (id: string | null) => {
+            if (!id) return true;
+            const product = getProduct(id);
+            return !product?.compatibility.vehicleCategories ||
+              product.compatibility.vehicleCategories.includes(category);
+          };
+          const config = s.configuration;
+          return {
+            configuration: {
+              ...config,
+              vehicleCategory: category,
+              vehicleModelId: defaultVehicleModel(category).id,
+              vehicleLength: 'standard',
+              vehicleRoof: 'standard',
+              cabType: category === 'trailer' ? 'single' : config.cabType,
+              tankId: allowed(config.tankId) ? config.tankId : null,
+              floatValve: allowed(config.tankId) ? config.floatValve : null,
+              compressorId: allowed(config.compressorId) ? config.compressorId : null,
+              airReelId: allowed(config.compressorId) ? config.airReelId : null,
+              generatorId: allowed(config.generatorId) ? config.generatorId : null,
+              extraIds: config.extraIds.filter(id => allowed(id)),
+            },
+          };
+        }),
 
       setVehicleModel: (id) => {
         const vehicle = getVehicleModel(id);
