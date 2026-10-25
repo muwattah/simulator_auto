@@ -4,11 +4,11 @@ De configurator staat op **GitHub Pages** (alleen statische bestanden). Deze map
 
 ## Verloop
 
-1. Klant vult de configuratie en contactgegevens in en geeft toestemming.
-2. De Worker bewaart de aanvraag in Cloudflare D1, mailt de **volledige configuratie** naar `ADMIN_EMAIL` en stuurt de klant een **ontvangstbevestiging met dezelfde configuratie**. Deze bevestiging is geen definitieve offerte.
+1. Klant stelt de configuratie samen. De webapp rendert een studio-preview in 3D, combineert die met een lijst van alle geselecteerde onderdelen en exporteert het beeld als JPEG. Zonder WebGL wordt een duidelijk aangeduide 2D-visualisatie toegevoegd. Daarna vult de klant de contactgegevens in en geeft toestemming.
+2. De Worker bewaart de aanvraag en afbeelding in Cloudflare D1, mailt de **volledige configuratie en bijgevoegde afbeelding** naar `ADMIN_EMAIL` en stuurt de klant een **HTML-ontvangstbevestiging met dezelfde afbeelding en configuratie**. Deze bevestiging is geen definitieve offerte.
 3. De beheerdersmail bevat een **14 dagen geldige, persoonlijke goedkeuringslink**. De link alleen opent een formulier; hij verstuurt nog niets.
 4. De beheerder bekijkt alle gegevens, vult het **definitieve bedrag exclusief 21% btw** en eventuele voorwaarden in, en klikt op **Goedkeuren en offerte verzenden**.
-5. Pas dan verstuurt de mailservice de definitieve offerte met configuratie, bedrag, btw en opmerking naar de klant. De goedkeuring wordt eenmalig verwerkt. De Worker kan *acceptatie door de mailprovider* vaststellen, niet aflevering in de inbox garanderen.
+5. Pas dan verstuurt de mailservice de definitieve offerte met configuratie, de **dezelfde voorbeeldafbeelding**, bedrag, btw en opmerking naar de klant. De goedkeuring wordt eenmalig verwerkt. De Worker kan *acceptatie door de mailprovider* vaststellen, niet aflevering in de inbox garanderen.
 
 ## Benodigd
 
@@ -44,6 +44,13 @@ Zet vervolgens bij GitHub **Settings → Secrets and variables → Actions → V
 `VITE_QUOTE_API_URL` met de volledige Worker-URL. Bouw/deploy daarna opnieuw via de GitHub Pages-workflow.
 
 > Belangrijk: `VITE_QUOTE_API_URL` is **publieke** configuratie. Zet geen Resend-sleutel, adminadres of goedkeuringsgeheim in Vite/GitHub Pages. Die horen alleen in de Worker secrets.
+
+## Afbeelding en ontwerpkwaliteit
+
+- De klant ziet vooraf dezelfde configuratie-preview die in de mail wordt gebruikt: een 3D-opname plus onderdelenoverzicht. De e-mail gebruikt Resend **CID inline image attachments**, waardoor de afbeelding in compatibele mailprogramma's direct zichtbaar is en als bestand meegaat.
+- De afbeelding is geen fotorealistische productfoto en geen gegarandeerde montagetekening. Componentgeometrie en laadruimteafmetingen zijn voorlopig demonstratiemodellen. Voor exacte merken en afmetingen zijn echte 3D-productbestanden (bijvoorbeeld GLB) en gevalideerde catalogusmaten nodig.
+- De browser comprimeert naar JPEG en stuurt maximaal circa 650 kB Base64 mee. Het backend accepteert geen ander bestandstype en beperkt de grootte.
+- Sommige mailclients tonen CID-afbeeldingen alleen na expliciet toestaan van afbeeldingen; de tekstuele configuratie staat er daarom ook altijd volledig in.
 
 ## Veiligheid en operationeel
 
