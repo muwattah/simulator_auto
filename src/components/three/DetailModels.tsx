@@ -28,37 +28,36 @@ function pick(e: ThreeEvent<PointerEvent>, onSelect: () => void) {
   onSelect();
 }
 
+/** White polyethylene water tank with steel securing straps and accessible cap. */
 export function TankMesh({ item, selected, onSelect }: { item: PlacedItem; selected: boolean; onSelect: () => void }) {
   const [w, h, d] = item.size;
-  const body = useHighlightMat(selected, tankBlue, 0.25, 0.55);
-  const band = useMemo(() => new THREE.MeshStandardMaterial({ color: darkMetal, metalness: 0.6, roughness: 0.35 }), []);
-  const cap = useMemo(() => new THREE.MeshStandardMaterial({ color: '#94a3b8', metalness: 0.5, roughness: 0.4 }), []);
-  const r = Math.min(w, d) * 0.48;
+  const body = useHighlightMat(selected, '#e7e9e4', 0.03, 0.67);
+  const strap = useMemo(() => new THREE.MeshStandardMaterial({ color: '#1d252b', metalness: 0.65, roughness: 0.35 }), []);
+  const cap = useMemo(() => new THREE.MeshStandardMaterial({ color: '#29343f', metalness: 0.4, roughness: 0.48 }), []);
+  const brass = useMemo(() => new THREE.MeshStandardMaterial({ color: '#c6a15b', metalness: 0.85, roughness: 0.28 }), []);
   return (
     <group position={item.position} onPointerDown={(e) => pick(e, onSelect)}>
-      <mesh castShadow receiveShadow material={body} position={[0, h * 0.05, 0]}>
-        <cylinderGeometry args={[r * 0.92, r, h * 0.75, 20]} />
+      <mesh castShadow receiveShadow material={body}>
+        <boxGeometry args={[w * 0.92, h * 0.88, d * 0.91]} />
       </mesh>
-      <mesh position={[0, h * 0.42, 0]} castShadow material={body}>
-        <cylinderGeometry args={[r * 0.7, r * 0.92, h * 0.18, 16]} />
+      <mesh position={[0, h * 0.46, -d * 0.27]} material={cap} castShadow>
+        <cylinderGeometry args={[0.085, 0.085, 0.043, 18]} />
       </mesh>
-      {[-0.15, 0.12].map((y, i) => (
-        <mesh key={i} position={[0, y * h, 0]} material={band}>
-          <torusGeometry args={[r * 0.98, 0.02, 8, 24]} />
-        </mesh>
+      {[-0.34, 0.34].map((z, i) => (
+        <group key={i} position={[0, 0, z * d]}>
+          <mesh position={[-w * 0.47, 0, 0]} material={strap}><boxGeometry args={[0.038, h * 0.91, 0.06]} /></mesh>
+          <mesh position={[w * 0.47, 0, 0]} material={strap}><boxGeometry args={[0.038, h * 0.91, 0.06]} /></mesh>
+          <mesh position={[0, h * 0.46, 0]} material={strap}><boxGeometry args={[w * 0.98, 0.032, 0.06]} /></mesh>
+        </group>
       ))}
-      <mesh position={[0, h * 0.55, 0]} material={cap}>
-        <cylinderGeometry args={[0.07, 0.07, 0.06, 12]} />
+      <mesh position={[w * 0.3, -h * 0.31, -d * 0.47]} rotation={[Math.PI / 2, 0, 0]} material={brass}>
+        <cylinderGeometry args={[0.047, 0.047, 0.11, 14]} />
       </mesh>
-      <mesh position={[r * 0.85, -h * 0.15, 0]} rotation={[0, 0, Math.PI / 2]} material={band}>
-        <cylinderGeometry args={[0.035, 0.035, 0.14, 8]} />
+      <mesh position={[0, h * 0.045, -d * 0.46]}>
+        <planeGeometry args={[w * 0.38, h * 0.22]} />
+        <meshStandardMaterial color="#c6d4e1" transparent opacity={0.48} />
       </mesh>
-      {selected && (
-        <mesh>
-          <boxGeometry args={[w * 1.12, h * 1.15, d * 1.12]} />
-          <meshBasicMaterial color="#3b82f6" wireframe transparent opacity={0.55} />
-        </mesh>
-      )}
+      {selected && <mesh><boxGeometry args={[w * 1.1, h * 1.14, d * 1.1]} /><meshBasicMaterial color="#38bdf8" wireframe transparent opacity={0.5} /></mesh>}
     </group>
   );
 }
@@ -232,73 +231,96 @@ export function VacuumMesh({ item, selected, onSelect }: { item: PlacedItem; sel
   );
 }
 
+/** Compact yellow machine with a visible pump, grill and hoses. */
 export function PressureWasherMesh({ item, selected, onSelect }: { item: PlacedItem; selected: boolean; onSelect: () => void }) {
   const prod = getProduct(item.productId);
   const petrol = prod?.visual3D.variant === 'petrol';
   const [w, h, d] = item.size;
-  const bodyMat = useHighlightMat(selected, petrol ? '#b45309' : '#1d4ed8', 0.3, 0.5);
-  const wheelMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#111827', roughness: 0.8 }), []);
+  const body = useHighlightMat(selected, petrol ? '#d97706' : '#eab308', 0.25, 0.45);
+  const dark = useMemo(() => new THREE.MeshStandardMaterial({ color: '#18222b', metalness: 0.42, roughness: 0.43 }), []);
+  const chrome = useMemo(() => new THREE.MeshStandardMaterial({ color: '#b7c4ce', metalness: 0.85, roughness: 0.24 }), []);
   return (
     <group position={item.position} onPointerDown={(e) => pick(e, onSelect)}>
-      <mesh material={bodyMat} castShadow><boxGeometry args={[w * 0.88, h * 0.58, d * 0.72]} /></mesh>
-      <mesh position={[0, h * 0.38, 0]} material={bodyMat}><boxGeometry args={[w * 0.55, h * 0.28, d * 0.45]} /></mesh>
-      <mesh position={[-w * 0.32, -h * 0.32, d * 0.28]} rotation={[Math.PI / 2, 0, 0]} material={wheelMat}>
-        <cylinderGeometry args={[0.07, 0.07, 0.05, 12]} />
+      <mesh material={body} castShadow><boxGeometry args={[w * 0.94, h * 0.7, d * 0.85]} /></mesh>
+      <mesh position={[-w * 0.33, h * 0.1, -d * 0.435]} material={dark}>
+        <cylinderGeometry args={[h * 0.16, h * 0.16, 0.037, 24]} />
       </mesh>
-      <mesh position={[w * 0.32, -h * 0.32, d * 0.28]} rotation={[Math.PI / 2, 0, 0]} material={wheelMat}>
-        <cylinderGeometry args={[0.07, 0.07, 0.05, 12]} />
+      <mesh position={[-w * 0.33, h * 0.1, -d * 0.455]} material={chrome}>
+        <cylinderGeometry args={[h * 0.078, h * 0.078, 0.045, 18]} />
       </mesh>
-      {selected && (
-        <mesh><boxGeometry args={[w * 1.12, h * 1.12, d * 1.12]} /><meshBasicMaterial color="#3b82f6" wireframe transparent opacity={0.5} /></mesh>
-      )}
+      {[0, 1, 2, 3, 4].map(i => (
+        <mesh key={i} position={[w * 0.16 + i * w * 0.115, -h * 0.06, -d * 0.435]} material={dark}>
+          <boxGeometry args={[w * 0.05, h * 0.38, 0.018]} />
+        </mesh>
+      ))}
+      <mesh position={[0, h * 0.4, 0]} material={dark}>
+        <boxGeometry args={[w * 0.48, h * 0.085, d * 0.58]} />
+      </mesh>
+      <mesh position={[-w * 0.25, -h * 0.32, 0]} material={dark}>
+        <boxGeometry args={[w * 0.17, h * 0.11, d * 0.96]} />
+      </mesh>
+      <mesh position={[w * 0.25, -h * 0.32, 0]} material={dark}>
+        <boxGeometry args={[w * 0.17, h * 0.11, d * 0.96]} />
+      </mesh>
+      {selected && <mesh><boxGeometry args={[w * 1.12, h * 1.16, d * 1.12]} /><meshBasicMaterial color="#38bdf8" wireframe transparent opacity={0.5} /></mesh>}
     </group>
   );
 }
 
+/** Powder-coated steel rack with a metallic tread-plate back and storage shelf. */
 export function FrameMesh({ item, selected, onSelect }: { item: PlacedItem; selected: boolean; onSelect: () => void }) {
   const prod = getProduct(item.productId);
   const variant = prod?.visual3D.variant ?? 'basic';
   const [w, h, d] = item.size;
-  const mat = useHighlightMat(selected, '#a8b0b8', 0.65, 0.3);
-  const shelfMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#6b7280', metalness: 0.5, roughness: 0.4 }), []);
-  const toolboxMat = useHighlightMat(selected, '#b45309', 0.3, 0.5);
+  const steel = useHighlightMat(selected, '#171d23', 0.76, 0.34);
+  const panel = useMemo(() => new THREE.MeshStandardMaterial({ color: '#9ca8b3', metalness: 0.66, roughness: 0.33 }), []);
+  const shelf = useMemo(() => new THREE.MeshStandardMaterial({ color: '#394652', metalness: 0.6, roughness: 0.4 }), []);
   const hasShelf = ['full', 'standard'].includes(variant);
   const hasStorage = ['full', 'tank_storage', 'toolbox'].includes(variant);
   const hasToolbox = variant === 'toolbox';
   return (
     <group position={item.position} onPointerDown={(e) => pick(e, onSelect)}>
-      {[-1, 1].map((side) =>
-        [0, 1].map((z) => (
-          <mesh key={`${side}-${z}`} position={[side * w * 0.46, h * 0.02, -d * 0.28 + z * d * 0.55]} material={mat} castShadow>
-            <boxGeometry args={[0.045, h * 0.98, 0.045]} />
-          </mesh>
-        ))
-      )}
-      {[0.08, 0.42, 0.78].map((yf, i) => (
-        <mesh key={i} position={[0, -h * 0.42 + yf * h, -d * 0.02]} material={mat}>
-          <boxGeometry args={[w * 0.94, 0.04, 0.04]} />
+      <mesh position={[0, 0, d * 0.35]} material={panel} castShadow>
+        <boxGeometry args={[w * 0.90, h * 0.93, 0.025]} />
+      </mesh>
+      {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
+        <mesh key={'tread-' + i} position={[0, -h * 0.4 + i * h * 0.11, d * 0.35 + 0.021]} rotation={[0, 0, Math.PI / 4]}>
+          <boxGeometry args={[w * 0.73, 0.008, 0.007]} />
+          <meshStandardMaterial color="#d3dae1" metalness={0.78} roughness={0.26} />
         </mesh>
       ))}
-      <mesh position={[-w * 0.46, h * 0.28, 0]} material={mat}><boxGeometry args={[0.035, 0.035, d * 0.75]} /></mesh>
-      <mesh position={[w * 0.46, h * 0.28, 0]} material={mat}><boxGeometry args={[0.035, 0.035, d * 0.75]} /></mesh>
+      {[-1, 1].map(side => (
+        <group key={'side-' + side}>
+          <mesh position={[side * w * 0.48, 0, 0]} material={steel} castShadow>
+            <boxGeometry args={[0.052, h * 1.07, d * 1.12]} />
+          </mesh>
+          <mesh position={[side * w * 0.48, h * 0.52, 0]} material={steel}>
+            <boxGeometry args={[0.06, 0.056, d * 1.17]} />
+          </mesh>
+        </group>
+      ))}
+      {[-0.48, 0.50].map((y, i) => (
+        <mesh key={i} position={[0, y * h, 0]} material={steel} castShadow>
+          <boxGeometry args={[w * 1.04, 0.06, d * 1.13]} />
+        </mesh>
+      ))}
       {hasShelf && (
-        <mesh position={[0, h * 0.18, 0.06]} material={shelfMat} receiveShadow>
-          <boxGeometry args={[w * 0.88, 0.03, d * 0.58]} />
+        <mesh position={[0, -h * 0.18, -d * 0.12]} material={shelf} receiveShadow castShadow>
+          <boxGeometry args={[w * 0.86, 0.035, d * 0.8]} />
         </mesh>
       )}
       {hasStorage && (
-        <mesh position={[w * 0.28, -h * 0.12, 0.1]} material={shelfMat}>
-          <boxGeometry args={[w * 0.32, h * 0.38, d * 0.42]} />
+        <mesh position={[w * 0.27, -h * 0.25, 0.02]} material={shelf} castShadow>
+          <boxGeometry args={[w * 0.3, h * 0.31, d * 0.38]} />
         </mesh>
       )}
       {hasToolbox && (
-        <mesh position={[-w * 0.28, -h * 0.18, 0.12]} material={toolboxMat}>
-          <boxGeometry args={[w * 0.32, h * 0.28, d * 0.38]} />
+        <mesh position={[-w * 0.28, -h * 0.26, 0.02]} castShadow>
+          <boxGeometry args={[w * 0.28, h * 0.26, d * 0.4]} />
+          <meshStandardMaterial color="#d5a145" roughness={0.43} metalness={0.3} />
         </mesh>
       )}
-      {selected && (
-        <mesh><boxGeometry args={[w * 1.08, h * 1.08, d * 1.25]} /><meshBasicMaterial color="#3b82f6" wireframe transparent opacity={0.4} /></mesh>
-      )}
+      {selected && <mesh><boxGeometry args={[w * 1.10, h * 1.12, d * 1.25]} /><meshBasicMaterial color="#38bdf8" wireframe transparent opacity={0.40} /></mesh>}
     </group>
   );
 }

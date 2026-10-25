@@ -31,6 +31,9 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # Public Worker URL, configured as a GitHub Actions repository variable.
+          VITE_QUOTE_API_URL: ${{ vars.VITE_QUOTE_API_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

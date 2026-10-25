@@ -18,6 +18,7 @@ import type {
 } from '../types';
 import { getProduct, getVehicleCategory } from '../data/detailingCatalog';
 import { company } from '../config/company';
+import { getVehicleModel } from '../data/vehicleModels';
 
 /** Unieke configuratiereferentie: RS-2026-A1B2C3D4 */
 export function generateConfigurationId(): string {
@@ -55,6 +56,10 @@ export interface QuotePayload {
   vehicle: {
     categoryId: string | null;
     categoryName: string | null;
+    modelName?: string | null;
+    modelId?: string | null;
+    wheelbase?: string;
+    roofHeight?: string;
     cabType: string | null;
   };
   systems: {
@@ -95,6 +100,8 @@ export interface QuotePayload {
   };
   estimatedWaterWeightKg: number;
   layoutWarnings: string[];
+  /** JPEG image of the selected configuration, captured on the client. */
+  previewImageDataUrl: string;
   privacyConsent: boolean;
 }
 
@@ -113,6 +120,7 @@ export function buildQuotePayload(params: {
   estimatedWaterWeightKg: number;
   layoutWarnings: string[];
   privacyConsent: boolean;
+  previewImageDataUrl: string;
 }): QuotePayload {
   const c = params.configuration;
   const cat = getVehicleCategory(c.vehicleCategory);
@@ -133,6 +141,10 @@ export function buildQuotePayload(params: {
     vehicle: {
       categoryId: c.vehicleCategory,
       categoryName: cat?.name ?? null,
+      modelName: getVehicleModel(c.vehicleModelId)?.display ?? null,
+      modelId: c.vehicleModelId ?? null,
+      wheelbase: c.vehicleLength === 'long' ? 'L2 / lang' : 'L1 / standaard',
+      roofHeight: c.vehicleRoof === 'high' ? 'H2 / hoog' : 'H1 / standaard',
       cabType: c.cabType,
     },
     systems: {
@@ -174,6 +186,7 @@ export function buildQuotePayload(params: {
     estimatedWaterWeightKg: params.estimatedWaterWeightKg,
     layoutWarnings: params.layoutWarnings,
     privacyConsent: params.privacyConsent,
+    previewImageDataUrl: params.previewImageDataUrl,
   };
 }
 
@@ -195,6 +208,9 @@ export function formatQuoteSummary(payload: QuotePayload): string {
   lines.push('');
   lines.push('Voertuig:');
   lines.push(`- Type: ${payload.vehicle.categoryName ?? '—'}`);
+  lines.push(`- Merk/model: ${payload.vehicle.modelName ?? '—'}`);
+  lines.push(`- Wielbasis: ${payload.vehicle.wheelbase ?? '—'}`);
+  lines.push(`- Dakhoogte: ${payload.vehicle.roofHeight ?? '—'}`);
   lines.push(`- Cabine: ${payload.vehicle.cabType ?? '—'}`);
   lines.push('');
   lines.push('Water:');
@@ -236,6 +252,8 @@ export function formatQuoteSummary(payload: QuotePayload): string {
     lines.push(payload.specialRequests.trim());
     lines.push('');
   }
+  lines.push('Een visualisatie van de installatie wordt apart als afbeelding meegeleverd.');
+  lines.push('');
   lines.push('Prijsstatus:');
   if (payload.pricing.status === 'pending') {
     lines.push('- Alle geselecteerde onderdelen: prijs op aanvraag');
@@ -254,35 +272,64 @@ export function formatQuoteSummary(payload: QuotePayload): string {
 }
 
 export type SubmitQuoteResult =
-  | { ok: true; mode: 'local'; configurationId: string; message: string }
+  | {
+      ok: true;
+      mode: 'email';
+      configurationId: string;
+      createdAt: string;
+      customerReceiptSent: boolean;
+      adminNotificationSent: boolean;
+      message: string;
+    }
   | { ok: false; error: string };
 
 /**
- * Abstracte submit-laag.
- * Momenteel: lokale opslag + download/copy van de payload.
- * GEEN echte e-mailverzending (geen backend / secrets in frontend).
- *
- * Toekomst: POST naar veilige server-side endpoint.
+ * Submit via a server-side mail API. No API keys or recipient secrets in the browser.
+ * If the Worker is not deployed, report failure instead of falsely claiming a sent quote.
  */
 export async function submitQuoteRequest(payload: QuotePayload): Promise<SubmitQuoteResult> {
-  try {
-    const key = 'rs-quote-requests';
-    const existing = JSON.parse(localStorage.getItem(key) || '[]') as QuotePayload[];
-    existing.unshift(payload);
-    localStorage.setItem(key, JSON.stringify(existing.slice(0, 20)));
-  } catch {
-    // ignore storage errors
+  const endpoint = import.meta.env.VITE_QUOTE_API_URL?.trim();
+  if (!endpoint) {
+    return {
+      ok: false,
+      error: 'Online aanvragen zijn nog niet actief. Neem rechtstreeks contact op via telefoon of WhatsApp.',
+    };
   }
 
-  return {
-    ok: true,
-    mode: 'local',
-    configurationId: payload.configurationId,
-    message:
-      'Uw aanvraag is lokaal vastgelegd met referentie ' +
-      payload.configurationId +
-      '. Er is nog geen automatische e-mailverzending. Neem contact op via WhatsApp of telefoon, of stuur de samenvatting handmatig.',
-  };
+  try {
+    const response = await fetch(`${(endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint)}/api/quotes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json() as Partial<{
+      ok: boolean;
+      error: string;
+      configurationId: string;
+      createdAt: string;
+      customerReceiptSent: boolean;
+      adminNotificationSent: boolean;
+      message: string;
+    }>;
+
+    if (!response.ok || !result.ok || !result.configurationId || !result.createdAt) {
+      return { ok: false, error: result.error || 'De aanvraag kon niet worden verzonden. Probeer opnieuw.' };
+    }
+    return {
+      ok: true,
+      mode: 'email',
+      configurationId: result.configurationId,
+      createdAt: result.createdAt,
+      customerReceiptSent: result.customerReceiptSent === true,
+      adminNotificationSent: result.adminNotificationSent === true,
+      message: result.message || 'Je aanvraag is ontvangen en wordt nagekeken.',
+    };
+  } catch {
+    return {
+      ok: false,
+      error: 'De mailservice is momenteel niet bereikbaar. Je aanvraag is niet bevestigd. Probeer opnieuw of neem contact op.',
+    };
+  }
 }
 
 export function snapshotFromPayload(payload: QuotePayload): ConfigurationSnapshot {
@@ -291,6 +338,9 @@ export function snapshotFromPayload(payload: QuotePayload): ConfigurationSnapsho
     createdAt: payload.createdAt,
     vehicleCategory: payload.vehicle.categoryId as ConfigurationSnapshot['vehicleCategory'],
     cabType: payload.vehicle.cabType as ConfigurationSnapshot['cabType'],
+    vehicleModelId: payload.vehicle.modelId ?? null,
+    vehicleLength: payload.vehicle.wheelbase?.startsWith('L2') ? 'long' : 'standard',
+    vehicleRoof: payload.vehicle.roofHeight?.startsWith('H2') ? 'high' : 'standard',
     tank: payload.systems.tankId,
     floatValve: payload.systems.floatValve,
     pressureWasher: payload.systems.pressureWasherId,

@@ -1,7 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { Check, Copy, MessageCircle, Phone, AlertCircle, FileText } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { company } from '../config/company';
+import ConfigurationPreview from './ConfigurationPreview';
+import { createConfigurationFallbackImage, composeConfigurationPreviewImage } from '../lib/previewImage';
 import {
   generateConfigurationId,
   buildQuotePayload,
@@ -9,7 +11,6 @@ import {
   submitQuoteRequest,
   type QuotePayload,
 } from '../services/quoteService';
-import type { Customer } from '../types';
 
 interface Props {
   onClose?: () => void;
@@ -55,7 +56,6 @@ export default function QuoteForm({ onClose }: Props) {
   const configuration = useConfiguratorStore((s) => s.configuration);
   const getPricing = useConfiguratorStore((s) => s.getPricing);
   const getLayout = useConfiguratorStore((s) => s.getLayout);
-  const submitQuoteStore = useConfiguratorStore((s) => s.submitQuote);
   const vehicleLabel = useConfiguratorStore((s) => s.getVehicleLabel);
   const buildSnapshot = useConfiguratorStore((s) => s.buildSnapshot);
 
@@ -68,6 +68,11 @@ export default function QuoteForm({ onClose }: Props) {
     message: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const captureRef = useRef<(() => string | null) | null>(null);
+  const handleCaptureReady = useCallback((capture: (() => string | null) | null) => {
+    captureRef.current = capture;
+  }, []);
 
   const pricing = useMemo(() => getPricing(), [getPricing, configuration]);
   const layout = useMemo(() => getLayout(), [getLayout, configuration]);
@@ -89,6 +94,7 @@ export default function QuoteForm({ onClose }: Props) {
     if (Object.keys(errs).length > 0) return;
 
     setSubmitting(true);
+    setSubmissionError(null);
     try {
       const configurationId = generateConfigurationId();
       const createdAt = new Date().toISOString();
@@ -101,6 +107,20 @@ export default function QuoteForm({ onClose }: Props) {
         remarks: form.remarks.trim() || undefined,
       };
 
+      let previewImageDataUrl = captureRef.current?.() || null;
+      if (previewImageDataUrl && previewImageDataUrl.length <= 650_000) {
+        const decorated = await composeConfigurationPreviewImage(previewImageDataUrl, configuration, layout);
+        if (decorated && decorated.length <= 650_000) previewImageDataUrl = decorated;
+      }
+      // A truthful 2D preview is included if WebGL or image capture is unavailable.
+      if (!previewImageDataUrl || previewImageDataUrl.length > 650_000) {
+        previewImageDataUrl = createConfigurationFallbackImage(configuration, layout);
+      }
+      if (!previewImageDataUrl) {
+        setSubmissionError('De afbeelding kon niet worden gemaakt. Probeer opnieuw of neem contact op.');
+        return;
+      }
+
       const weight = buildSnapshot().estimatedWaterWeightKg;
       const finalPayload = buildQuotePayload({
         configurationId,
@@ -111,27 +131,28 @@ export default function QuoteForm({ onClose }: Props) {
         estimatedWaterWeightKg: weight,
         layoutWarnings: layout.warnings,
         privacyConsent: form.privacyConsent,
+        previewImageDataUrl,
       });
 
-      const summary = formatQuoteSummary(finalPayload);
       const submitResult = await submitQuoteRequest(finalPayload);
+      if (!submitResult.ok) {
+        setSubmissionError(submitResult.error);
+        return;
+      }
 
-      const legacyCustomer: Customer = {
-        firstName: form.name.trim().split(/\s+/)[0] || form.name.trim(),
-        lastName: form.name.trim().split(/\s+/).slice(1).join(' ') || '',
-        company: form.company.trim() || undefined,
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        postcode: form.location.trim(),
-        remarks: form.remarks.trim() || undefined,
+      // Only the server-issued reference can identify an actual saved request.
+      const savedPayload = {
+        ...finalPayload,
+        configurationId: submitResult.configurationId,
+        createdAt: submitResult.createdAt,
       };
-      submitQuoteStore(legacyCustomer);
-
       setResult({
-        payload: finalPayload,
-        summary,
-        message: submitResult.ok ? submitResult.message : submitResult.error,
+        payload: savedPayload,
+        summary: formatQuoteSummary(savedPayload),
+        message: submitResult.message,
       });
+    } catch {
+      setSubmissionError('Er is iets misgelopen. Probeer opnieuw of neem rechtstreeks contact op.');
     } finally {
       setSubmitting(false);
     }
@@ -165,6 +186,17 @@ export default function QuoteForm({ onClose }: Props) {
               </p>
             </div>
           </div>
+        </div>
+
+<div className="card p-3">
+          <img
+            src={result.payload.previewImageDataUrl}
+            alt="Afbeelding van jouw gekozen mobiele installatie"
+            className="w-full rounded-lg object-contain"
+          />
+          <p className="text-xs text-[var(--text-muted)] mt-2">
+            Dezelfde visualisatie wordt meegestuurd met je aanvraag en offerte.
+          </p>
         </div>
 
         <div className="card p-5">
@@ -205,7 +237,7 @@ export default function QuoteForm({ onClose }: Props) {
         )}
 
         <p className="text-xs text-[var(--text-muted)] text-center">
-          Automatische e-mailverzending is nog niet actief. Deel de referentie of samenvatting via WhatsApp of telefoon.
+          De ontvangstbevestiging is nog geen definitieve offerte. Die volgt pas nadat RS Car Detailing je aanvraag heeft gecontroleerd en goedgekeurd.
         </p>
       </div>
     );
@@ -216,9 +248,11 @@ export default function QuoteForm({ onClose }: Props) {
       <div>
         <h3 className="text-lg font-semibold text-[var(--text-primary)]">Offerteaanvraag</h3>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Vul uw gegevens in. Uw configuratie ({vehicleLabel}) wordt meegestuurd met een unieke referentie.
+          Vul uw gegevens in. Uw configuratie ({vehicleLabel}) en een afbeelding van uw installatie worden meegestuurd. De definitieve offerte volgt na onze goedkeuring.
         </p>
       </div>
+
+      <ConfigurationPreview onCaptureReady={handleCaptureReady} />
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
@@ -347,9 +381,15 @@ export default function QuoteForm({ onClose }: Props) {
         </p>
       )}
 
+      {submissionError && (
+        <p role="alert" className="text-sm text-[var(--danger)] flex items-start gap-2">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" /> {submissionError}
+        </p>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <button type="submit" className="btn-primary flex-1 justify-center" disabled={submitting}>
-          {submitting ? 'Bezig…' : 'Aanvraag voorbereiden'}
+          {submitting ? 'Aanvraag verzenden…' : 'Aanvraag indienen'}
         </button>
         {onClose && (
           <button type="button" onClick={onClose} className="btn-ghost">
@@ -359,7 +399,7 @@ export default function QuoteForm({ onClose }: Props) {
       </div>
 
       <p className="text-xs text-[var(--text-muted)]">
-        Prijzen worden op maat bepaald. Er worden geen bedragen automatisch doorgestuurd als definitieve offerte.
+        Je ontvangt een ontvangstbevestiging met je gekozen onderdelen. Na goedkeuring door RS Car Detailing ontvang je de definitieve offerte per e-mail.
       </p>
     </form>
   );
