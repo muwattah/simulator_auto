@@ -254,35 +254,64 @@ export function formatQuoteSummary(payload: QuotePayload): string {
 }
 
 export type SubmitQuoteResult =
-  | { ok: true; mode: 'local'; configurationId: string; message: string }
+  | {
+      ok: true;
+      mode: 'email';
+      configurationId: string;
+      createdAt: string;
+      customerReceiptSent: boolean;
+      adminNotificationSent: boolean;
+      message: string;
+    }
   | { ok: false; error: string };
 
 /**
- * Abstracte submit-laag.
- * Momenteel: lokale opslag + download/copy van de payload.
- * GEEN echte e-mailverzending (geen backend / secrets in frontend).
- *
- * Toekomst: POST naar veilige server-side endpoint.
+ * Submit via a server-side mail API. No API keys or recipient secrets in the browser.
+ * If the Worker is not deployed, report failure instead of falsely claiming a sent quote.
  */
 export async function submitQuoteRequest(payload: QuotePayload): Promise<SubmitQuoteResult> {
-  try {
-    const key = 'rs-quote-requests';
-    const existing = JSON.parse(localStorage.getItem(key) || '[]') as QuotePayload[];
-    existing.unshift(payload);
-    localStorage.setItem(key, JSON.stringify(existing.slice(0, 20)));
-  } catch {
-    // ignore storage errors
+  const endpoint = import.meta.env.VITE_QUOTE_API_URL?.trim();
+  if (!endpoint) {
+    return {
+      ok: false,
+      error: 'Online aanvragen zijn nog niet actief. Neem rechtstreeks contact op via telefoon of WhatsApp.',
+    };
   }
 
-  return {
-    ok: true,
-    mode: 'local',
-    configurationId: payload.configurationId,
-    message:
-      'Uw aanvraag is lokaal vastgelegd met referentie ' +
-      payload.configurationId +
-      '. Er is nog geen automatische e-mailverzending. Neem contact op via WhatsApp of telefoon, of stuur de samenvatting handmatig.',
-  };
+  try {
+    const response = await fetch(`${endpoint.replace(/\\/$/, '')}/api/quotes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json() as Partial<{
+      ok: boolean;
+      error: string;
+      configurationId: string;
+      createdAt: string;
+      customerReceiptSent: boolean;
+      adminNotificationSent: boolean;
+      message: string;
+    }>;
+
+    if (!response.ok || !result.ok || !result.configurationId || !result.createdAt) {
+      return { ok: false, error: result.error || 'De aanvraag kon niet worden verzonden. Probeer opnieuw.' };
+    }
+    return {
+      ok: true,
+      mode: 'email',
+      configurationId: result.configurationId,
+      createdAt: result.createdAt,
+      customerReceiptSent: result.customerReceiptSent === true,
+      adminNotificationSent: result.adminNotificationSent === true,
+      message: result.message || 'Je aanvraag is ontvangen en wordt nagekeken.',
+    };
+  } catch {
+    return {
+      ok: false,
+      error: 'De mailservice is momenteel niet bereikbaar. Je aanvraag is niet bevestigd. Probeer opnieuw of neem contact op.',
+    };
+  }
 }
 
 export function snapshotFromPayload(payload: QuotePayload): ConfigurationSnapshot {
