@@ -21,6 +21,21 @@ Officiële gegevens (geverifieerd op https://www.rscardetailing.be/):
 - Borsbeek, België
 - Tel / WhatsApp: 0492 07 05 98
 
+## Interactieve bestelwagensimulator (in ontwikkeling)
+
+De simulator staat centraal; de homepage is niet aangepast. In de configuratie:
+- Kies voertuigcategorie, merk/model en **indicatieve** wielbasis en dakhoogte.
+- Bekijk de bestelwagen in een grotere 3D-viewer met achter-, zij-, boven- en perspectiefcamera.
+- Schakel de carrosserie naar **doorzichtig**, **gesloten** of **verborgen**.
+- Open/sluit de geanimeerde achterdeuren en verberg/toon het dak.
+- Voeg detailingapparatuur toe en bekijk die direct in de 3D-laadruimte.
+- Alleen bekende voertuigcategorie-uitsluitingen worden automatisch geblokkeerd; technische plaatsing moet altijd apart worden gecontroleerd.
+
+**Belangrijk:** het voertuig is momenteel een eigen generiek/procedureel 3D-model, geen
+exacte fabrikant-scans of WEATHER GUARD-assets. Wagenmaten zijn demo-inschattingen.
+Echte fotorealistische modelweergave vergt passende, gelicentieerde GLB/CAD-bestanden
+en gecontroleerde voertuigmaten, die later per model kunnen worden toegevoegd.
+
 ## Tech
 
 - React 18 + TypeScript + Vite
