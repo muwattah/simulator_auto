@@ -1,5 +1,6 @@
 import type { DetailingConfiguration, LayoutResult } from '../types';
 import { getProduct, getVehicleCategory } from '../data/detailingCatalog';
+import { getVehicleModel } from '../data/vehicleModels';
 
 /**
  * Two-dimensional image fallback for browsers without WebGL or when GPU capture fails.
@@ -83,7 +84,7 @@ export function createConfigurationFallbackImage(
     ctx.fillRect(695, 220, 365, 440);
     ctx.fillStyle = '#ffffff';
     ctx.font = '600 23px system-ui, sans-serif';
-    ctx.fillText(vehicle?.name || 'Configuratie', 718, 261);
+    ctx.fillText(getVehicleModel(configuration.vehicleModelId)?.display || vehicle?.name || 'Configuratie', 718, 261);
     ctx.font = '600 18px system-ui, sans-serif';
     ctx.fillStyle = '#57c6f5';
     ctx.fillText('GEKOZEN ONDERDELEN', 718, 303);
@@ -157,7 +158,7 @@ export async function composeConfigurationPreviewImage(
     ctx.fillText('VOERTUIG', panelX + 24, panelY + 38);
     ctx.fillStyle = '#eff5fa';
     ctx.font = '600 18px system-ui, sans-serif';
-    ctx.fillText(vehicle?.name || 'Werkbusinstallatie', panelX + 24, panelY + 66);
+    ctx.fillText(getVehicleModel(configuration.vehicleModelId)?.display || vehicle?.name || 'Werkbusinstallatie', panelX + 24, panelY + 66);
     ctx.fillStyle = '#99aabd';
     ctx.font = '700 15px system-ui, sans-serif';
     ctx.fillText('GESELECTEERDE ONDERDELEN', panelX + 24, panelY + 111);
