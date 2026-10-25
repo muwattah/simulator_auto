@@ -75,6 +75,7 @@ test('request gives customer a receipt, and only admin approval sends final quot
       systems: { tankName: 'Watertank 400 L' },
       installation: {}, extras: [{ id: 'set_tools', name: 'Gereedschap' }],
       specialRequests: 'Voorzichtig monteren', layoutWarnings: [], privacyConsent: true,
+      previewImageDataUrl: 'data:image/jpeg;base64,/9j/' + 'A'.repeat(100),
     };
     const request = new Request('https://quotes.example.test/api/quotes', {
       method: 'POST', headers: { Origin: 'https://muwattah.github.io', 'Content-Type': 'application/json' },
@@ -88,7 +89,12 @@ test('request gives customer a receipt, and only admin approval sends final quot
     assert.equal(result.adminNotificationSent, true);
     assert.equal(mails.length, 2);
     assert.equal(mails[0].data.to[0], env.ADMIN_EMAIL);
+    assert.match(mails[0].data.html, /cid:rs-configuration-preview/);
+    assert.equal(mails[0].data.attachments[0].content_id, 'rs-configuration-preview');
+    assert.equal(mails[0].data.attachments[0].content_type, 'image/jpeg');
     assert.equal(mails[1].data.to[0], customer);
+    assert.match(mails[1].data.html, /cid:rs-configuration-preview/);
+    assert.equal(mails[1].data.attachments[0].content, '/9j/' + 'A'.repeat(100));
     assert.match(mails[1].data.text, /nog GEEN definitieve offerte/);
     assert.match(mails[1].data.text, /Watertank 400 L/);
 
@@ -111,6 +117,8 @@ test('request gives customer a receipt, and only admin approval sends final quot
     assert.equal(approved.status, 200);
     assert.equal(mails.length, 3);
     assert.equal(mails[2].data.to[0], customer);
+    assert.match(mails[2].data.html, /Jouw definitieve offerte/);
+    assert.match(mails[2].data.html, /cid:rs-configuration-preview/);
     assert.match(mails[2].data.text, /€\s?1\.500,00/);
     assert.match(mails[2].data.text, /Levertijd na overleg/);
     assert.equal(DB.rows.get(result.configurationId).status, 'sent');
