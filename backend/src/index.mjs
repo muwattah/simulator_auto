@@ -126,7 +126,7 @@ function html(body, status = 200) {
       'Referrer-Policy': 'no-referrer',
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
-      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
     },
   });
 }
@@ -259,8 +259,14 @@ async function getReview(env, id, token) {
   if (!row || Date.parse(row.expires_at) < Date.now()) return html('<h1>Link verlopen</h1>', 410);
   if (row.status === 'sent') return html('<h1>Offerte reeds verzonden</h1><p>Deze aanvraag is al bevestigd en naar de klant verstuurd.</p>');
   if (row.status === 'sending') return html('<h1>Verzending bezig</h1><p>Deze offerte wordt verwerkt. Ververs later de pagina.</p>');
-  const summary = summaryFromPayload(JSON.parse(row.payload_json));
-  return html(`<h1>Offerte beoordelen — ${escapeHtml(id)}</h1><p>Controleer de configuratie hieronder. Alleen jouw bevestiging verstuurt de definitieve offerte naar de klant.</p><pre>${escapeHtml(summary)}</pre><form method="post" action="/review"><input type="hidden" name="id" value="${escapeHtml(id)}"><input type="hidden" name="token" value="${escapeHtml(token)}"><label for="amount">Definitieve prijs exclusief 21% btw (€) *</label><input type="number" id="amount" name="amount" min="0.01" step="0.01" required placeholder="Bijv. 2450.00"><label for="message">Offertevoorwaarden / opmerkingen voor de klant</label><textarea id="message" name="message" rows="5" maxlength="4000" placeholder="Wat is inbegrepen, uitvoeringstermijn, geldigheidsduur, eventuele voorwaarden…"></textarea><small>Na bevestiging wordt de offerte onmiddellijk per e-mail aangeboden aan de klant. Dit kun je niet ongedaan maken.</small><p><button type="submit">Goedkeuren en offerte verzenden</button></p></form>`);
+  const stored = JSON.parse(row.payload_json);
+  const summary = summaryFromPayload(stored);
+  const preview = typeof stored.previewImageDataUrl === 'string' &&
+    /^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/=]*$/.test(stored.previewImageDataUrl)
+    ? '<div style="margin:20px 0"><img alt="Visuele preview van de gekozen installatie" src="' +
+      escapeHtml(stored.previewImageDataUrl) + '" style="max-width:100%;border-radius:10px"></div>'
+    : '';
+  return html(`<h1>Offerte beoordelen — ${escapeHtml(id)}</h1><p>Controleer de configuratie hieronder. Alleen jouw bevestiging verstuurt de definitieve offerte naar de klant.</p>${preview}<pre>${escapeHtml(summary)}</pre><form method="post" action="/review"><input type="hidden" name="id" value="${escapeHtml(id)}"><input type="hidden" name="token" value="${escapeHtml(token)}"><label for="amount">Definitieve prijs exclusief 21% btw (€) *</label><input type="number" id="amount" name="amount" min="0.01" step="0.01" required placeholder="Bijv. 2450.00"><label for="message">Offertevoorwaarden / opmerkingen voor de klant</label><textarea id="message" name="message" rows="5" maxlength="4000" placeholder="Wat is inbegrepen, uitvoeringstermijn, geldigheidsduur, eventuele voorwaarden…"></textarea><small>Na bevestiging wordt de offerte onmiddellijk per e-mail aangeboden aan de klant. Dit kun je niet ongedaan maken.</small><p><button type="submit">Goedkeuren en offerte verzenden</button></p></form>`);
 }
 async function postReview(request, env) {
   if (!configOk(env)) return html('<h1>Service niet geconfigureerd</h1>', 503);
