@@ -102,7 +102,9 @@ test('request gives customer a receipt, and only admin approval sends final quot
     assert.ok(reviewLink);
     const review = await worker.fetch(new Request(reviewLink), env);
     assert.equal(review.status, 200);
-    assert.match(await review.text(), /Goedkeuren en offerte verzenden/);
+    const reviewHtml = await review.text();
+    assert.match(reviewHtml, /Goedkeuren en offerte verzenden/);
+    assert.match(reviewHtml, /data:image\/jpeg;base64,/);
     assert.equal(mails.length, 2, 'opening review does not send quote');
 
     const u = new URL(reviewLink);
