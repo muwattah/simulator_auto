@@ -3,7 +3,8 @@ import { useConfiguratorStore } from '../store/configuratorStore';
 import { getProduct } from '../data/detailingCatalog';
 import { formatPriceOrPending } from '../lib/pricing';
 import type { CameraPreset } from './three/VanScene3D';
-import { Box, Maximize2, RotateCcw, Trash2, X, AlertTriangle } from 'lucide-react';
+import type { VanViewSettings } from './three/VanBody3D';
+import { Box, Maximize2, RotateCcw, Trash2, X, AlertTriangle, SlidersHorizontal, CarFront, DoorOpen, ScanEye } from 'lucide-react';
 import VanVisualization from './VanVisualization';
 
 const VanScene3D = lazy(() => import('./three/VanScene3D'));
@@ -36,7 +37,15 @@ export default function LoadSpaceViewer() {
   const [mode, setMode] = useState<'3d' | '2d'>('3d');
   const [force2d, setForce2d] = useState(false);
   const [webglOk, setWebglOk] = useState(true);
-  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('rear');
+  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('overview');
+  const [settingsOpen, setSettingsOpen] = useState(true);
+  const [vanSettings, setVanSettings] = useState<VanViewSettings>({
+    body: 'transparent',
+    roofVisible: true,
+    doorsOpen: true,
+  });
+  const updateVanSettings = (change: Partial<VanViewSettings>) =>
+    setVanSettings(current => ({ ...current, ...change }));
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => { setWebglOk(supportsWebGL()); }, []);
@@ -74,7 +83,46 @@ export default function LoadSpaceViewer() {
           {CAMERAS.map((cam) => (
             <button key={cam.id} type="button" onClick={() => setCameraPreset(cam.id)} className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors ${cameraPreset === cam.id ? 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-muted)]' : 'text-[var(--text-muted)] border border-transparent'}`}>{cam.label}</button>
           ))}
-          <button type="button" onClick={() => setCameraPreset('rear')} className="ml-auto p-1 text-[var(--text-muted)]" title="Reset camera" aria-label="Reset camera"><RotateCcw size={14} /></button>
+          <button type="button" onClick={() => setCameraPreset('overview')} className="ml-auto p-1 text-[var(--text-muted)]" title="Reset camera" aria-label="Reset camera"><RotateCcw size={14} /></button>
+          <button type="button" onClick={() => setSettingsOpen(open => !open)}
+            className={`inline-flex gap-1 items-center px-2.5 py-1 rounded-md text-[11px] border font-semibold ${settingsOpen ? 'bg-[var(--accent-soft)] border-[var(--accent-muted)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}
+            aria-expanded={settingsOpen} aria-controls="van-display-settings">
+            <SlidersHorizontal size={13} /> Instellingen
+          </button>
+        </div>
+      )}
+
+
+      {effectiveMode === '3d' && settingsOpen && (
+        <div id="van-display-settings"
+          className="flex flex-wrap items-center gap-3 px-3 py-2 border-b border-[var(--border)] bg-[var(--surface-elevated)]">
+          <div className="inline-flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
+            <CarFront size={15} /> Carrosserie
+          </div>
+          <div className="flex rounded-md overflow-hidden border border-[var(--border)] text-[11px] font-semibold">
+            {([
+              ['transparent', 'Doorzichtig'],
+              ['solid', 'Gesloten'],
+              ['hidden', 'Verbergen'],
+            ] as const).map(([body, label]) => (
+              <button key={body} type="button" onClick={() => updateVanSettings({ body })}
+                aria-pressed={vanSettings.body === body}
+                className={`px-2.5 py-1.5 ${vanSettings.body === body ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => updateVanSettings({ doorsOpen: !vanSettings.doorsOpen })}
+            aria-pressed={vanSettings.doorsOpen}
+            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-md px-2.5 py-1.5 border ${vanSettings.doorsOpen ? 'border-[var(--accent-muted)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border)]'}`}>
+            <DoorOpen size={14} /> Achterdeuren {vanSettings.doorsOpen ? 'open' : 'dicht'}
+          </button>
+          <button type="button" onClick={() => updateVanSettings({ roofVisible: !vanSettings.roofVisible })}
+            aria-pressed={vanSettings.roofVisible}
+            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-md px-2.5 py-1.5 border ${!vanSettings.roofVisible ? 'border-[var(--accent-muted)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border)]'}`}>
+            <ScanEye size={14} /> Dak {vanSettings.roofVisible ? 'tonen' : 'verbergen'}
+          </button>
+          <span className="text-[10px] text-[var(--text-muted)]">Generieke 3D-bestelwagen · afmetingen indicatief</span>
         </div>
       )}
 
@@ -91,7 +139,7 @@ export default function LoadSpaceViewer() {
       <div className={`relative ${heightClass} viewer-shell !rounded-none !border-0`}>
         {effectiveMode === '3d' ? (
           <Suspense fallback={<div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">3D laden…</div>}>
-            <VanScene3D space={space} placements={layout.placements} liningVariant={liningVariant} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} cameraPreset={cameraPreset} />
+            <VanScene3D space={space} placements={layout.placements} liningVariant={liningVariant} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} cameraPreset={cameraPreset} vanSettings={vanSettings} />
           </Suspense>
         ) : (
           <div className="p-3 h-full overflow-auto bg-[var(--bg-secondary)]">
@@ -118,7 +166,7 @@ export default function LoadSpaceViewer() {
           </div>
         )}
       </div>
-      <p className="text-[10px] text-[var(--text-muted)] px-3 py-2 border-t border-[var(--border)]">Generieke 3D-demo · Klik object voor details · Muis/touch: draaien · Scroll: zoom</p>
+      <p className="text-[10px] text-[var(--text-muted)] px-3 py-2 border-t border-[var(--border)]">3D-bestelwagen met indicatieve voertuigafmetingen · Klik op apparatuur voor details · Draaien: slepen · Zoom: scroll/pinch</p>
     </div>
   );
 }
