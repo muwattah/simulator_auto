@@ -76,7 +76,17 @@ export default function LoadSpaceViewer() {
     <div className="detail-viewer overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <div className={'viewer-shell !rounded-none !border-0 relative ' + heightClass}>
         {effectiveMode === '3d' ? (
-          <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-[var(--text-muted)]">3D laden…</div>}>
+          <Suspense fallback={
+            <div className="relative h-full overflow-hidden bg-[#101720]">
+              <img src={import.meta.env.BASE_URL + 'realisations/workbench-01.jpg'} alt=""
+                className="h-full w-full object-cover opacity-35" />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                <span className="rounded-lg border border-white/10 bg-[#101720]/85 px-4 py-3 text-sm font-medium text-white">
+                  Jouw 3D-bestelwagen wordt geladen…
+                </span>
+              </div>
+            </div>
+          }>
             <VanScene3D
               space={space} placements={layout.placements} liningVariant={variant}
               selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId}
