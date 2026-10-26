@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Camera, Images } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 
 export type PhotoGroup = 'van' | 'pressure' | 'reel' | 'generator' | 'frame' | 'accessories';
 
