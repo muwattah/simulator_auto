@@ -18,6 +18,7 @@ interface Props {
 }
 
 type FormState = {
+  vehicleDescription: string;
   name: string;
   company: string;
   email: string;
@@ -30,6 +31,7 @@ type FormState = {
 type FieldErrors = Partial<Record<keyof FormState, string>>;
 
 const initialForm: FormState = {
+  vehicleDescription: '',
   name: '',
   company: '',
   email: '',
@@ -45,6 +47,7 @@ function validateEmail(email: string): boolean {
 
 function validate(form: FormState): FieldErrors {
   const errors: FieldErrors = {};
+  if (!form.vehicleDescription.trim()) errors.vehicleDescription = 'Vertel ons welke bestelwagen je hebt';
   if (!form.name.trim()) errors.name = 'Naam is verplicht';
   if (!form.email.trim()) errors.email = 'E-mail is verplicht';
   else if (!validateEmail(form.email)) errors.email = 'Vul een geldig e-mailadres in';
@@ -58,7 +61,6 @@ export default function QuoteForm({ onClose }: Props) {
   const getPricing = useConfiguratorStore((s) => s.getPricing);
   const getLayout = useConfiguratorStore((s) => s.getLayout);
   const submitQuoteStore = useConfiguratorStore((s) => s.submitQuote);
-  const vehicleLabel = useConfiguratorStore((s) => s.getVehicleLabel);
   const buildSnapshot = useConfiguratorStore((s) => s.buildSnapshot);
 
   const [form, setForm] = useState<FormState>(initialForm);
@@ -100,7 +102,7 @@ export default function QuoteForm({ onClose }: Props) {
         email: form.email.trim(),
         phone: form.phone.trim(),
         location: form.location.trim() || undefined,
-        remarks: form.remarks.trim() || undefined,
+        remarks: `Bestelwagen: ${form.vehicleDescription.trim()}${form.remarks.trim() ? '\n' + form.remarks.trim() : ''}`,
       };
 
       const weight = buildSnapshot().estimatedWaterWeightKg;
@@ -108,6 +110,7 @@ export default function QuoteForm({ onClose }: Props) {
         configurationId,
         createdAt,
         customer: customerPayload,
+        vehicleDescription: form.vehicleDescription.trim(),
         configuration,
         previewImageDataUrl: captureConfiguration(configuration),
         pricing,
@@ -224,8 +227,24 @@ export default function QuoteForm({ onClose }: Props) {
       <div>
         <h3 className="text-lg font-semibold text-[var(--text-primary)]">Offerteaanvraag</h3>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Vul uw gegevens in. Uw configuratie ({vehicleLabel()}) wordt meegestuurd met een unieke referentie.
+          Welke bus heb je? Vertel het ons hieronder. De 3D is een algemeen voorbeeld; wij controleren de echte inbouw bij de offerte.
         </p>
+      </div>
+
+      <div className="rounded-lg border border-[var(--accent-muted)] bg-[var(--accent-soft)] p-3">
+        <label htmlFor="qf-vehicle" className="block text-sm font-semibold text-[var(--text-primary)] mb-1">
+          Welke bestelwagen heb jij? <span className="text-[var(--accent)]">*</span>
+        </label>
+        <p className="text-xs text-[var(--text-secondary)] mb-2">Merk, model en indien bekend bouwjaar of lengte.</p>
+        <input id="qf-vehicle" type="text" required maxLength={180}
+          placeholder="Bijv. Ford Transit Custom, bouwjaar 2021, L2"
+          value={form.vehicleDescription}
+          onChange={e => update('vehicleDescription', e.target.value)}
+          className={`input w-full ${errors.vehicleDescription ? 'border-red-500/60' : ''}`}
+          aria-invalid={!!errors.vehicleDescription}
+          aria-describedby={errors.vehicleDescription ? 'qf-vehicle-err' : undefined}
+        />
+        {errors.vehicleDescription && <p id="qf-vehicle-err" className="mt-1 text-xs text-red-400">{errors.vehicleDescription}</p>}
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
