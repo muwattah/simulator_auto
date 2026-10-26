@@ -59,6 +59,8 @@ try {
     } else {
       assert(positions.viewerY < positions.catalogY, 'mobile shows 3D above parts library');
     }
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(150);
     await page.screenshot({ path: resolve(dir, device + '-studio.png'), fullPage: true });
 
     // Add and remove a real tank using the displayed product card.
