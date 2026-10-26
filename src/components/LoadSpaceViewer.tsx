@@ -5,7 +5,7 @@ import { getProduct } from '../data/detailingCatalog';
 import { formatPriceOrPending } from '../lib/pricing';
 import type { CameraPreset } from './three/VanScene3D';
 import type { VanViewSettings } from './three/VanBody3D';
-import { Box, Maximize2, RotateCcw, Trash2, X, AlertTriangle, SlidersHorizontal, CarFront, DoorOpen, ScanEye, ZoomIn, ZoomOut } from 'lucide-react';
+import { Box, Maximize2, RotateCcw, Trash2, X, SlidersHorizontal, CarFront, DoorOpen, ScanEye, ZoomIn, ZoomOut } from 'lucide-react';
 import VanVisualization from './VanVisualization';
 import DetailingPhotoGallery, { type PhotoGroup } from './DetailingPhotoGallery';
 
@@ -45,8 +45,7 @@ export default function LoadSpaceViewer() {
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('overview');
   const [cameraRevision, setCameraRevision] = useState(0);
   const [zoomStep, setZoomStep] = useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
-  const [warningsExpanded, setWarningsExpanded] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [vanSettings, setVanSettings] = useState<VanViewSettings>({
     body: 'transparent',
     roofVisible: true,
@@ -68,7 +67,7 @@ export default function LoadSpaceViewer() {
   const selected = selectedProductId ? getProduct(selectedProductId) : null;
   const selectedPlacement = layout.placements.find((p) => p.productId === selectedProductId);
   const liningVariant = getProduct(configuration.liningId)?.visual3D.variant ?? 'none';
-  const heightClass = expanded ? 'h-[77vh] min-h-[460px]' : 'h-[330px] sm:h-[440px] lg:h-[600px] 2xl:h-[680px]';
+  const heightClass = expanded ? 'h-[77vh] min-h-[400px]' : 'h-[215px] sm:h-[330px] lg:h-[calc(100vh-230px)] lg:min-h-[380px] lg:max-h-[620px]';
 
   return (
     <div className="card overflow-hidden detailing-viewer">
@@ -141,15 +140,8 @@ export default function LoadSpaceViewer() {
             className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-md px-2.5 py-1.5 border ${!vanSettings.roofVisible ? 'border-[var(--accent-muted)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border)]'}`}>
             <ScanEye size={14} /> Dak {vanSettings.roofVisible ? 'verbergen' : 'tonen'}
           </button>
-          <span className="text-[10px] text-[var(--text-muted)]">Generieke 3D-bestelwagen · afmetingen indicatief</span>
+          <span className="text-[10px] text-[var(--text-muted)]">Algemene voorbeeldbestelwagen · controle van echte maten bij offerte</span>
         </div>
-      )}
-
-      {layout.warnings.length > 0 && (
-        <details open={warningsExpanded} onToggle={e => setWarningsExpanded(e.currentTarget.open)} className="mx-3 mt-3 rounded-lg border border-[var(--warning)]/35 bg-[var(--warning)]/10 px-3 text-xs text-[var(--warning)]">
-          <summary className="min-h-[44px] flex items-center gap-2 cursor-pointer font-semibold"><AlertTriangle size={14} /> Controle en aandachtspunten ({layout.warnings.length})</summary>
-          <div className="pb-3 space-y-1">{layout.warnings.map((w, i) => <p key={i}>{w}</p>)}</div>
-        </details>
       )}
 
       <div className={`relative ${heightClass} viewer-shell !rounded-none !border-0`}>
@@ -190,7 +182,7 @@ export default function LoadSpaceViewer() {
         <p className="text-[10px] text-[var(--text-muted)]">
           {effectiveMode === 'foto'
             ? 'Bestaande product- en realisatiefoto’s als inspiratie. De gekozen configuratie blijft in het 3D-tabblad.'
-            : 'Indicatieve 3D-bestelwagen · Klik apparatuur voor details · Slepen: draaien · Scroll: zoom'}
+            : 'Transit Custom-achtig voorbeeld · Slepen: draaien · Scroll: zoom'}
         </p>
         {effectiveMode !== 'foto' && (
           <button type="button" className="text-xs text-[var(--accent)] hover:underline"
