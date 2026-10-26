@@ -127,7 +127,7 @@ export default function HomePage({ onStart }: Props) {
 
       <section className="relative isolate min-h-[90svh] md:min-h-[92svh] flex items-end md:items-center overflow-hidden bg-[#07111b]" aria-labelledby="hero-title">
         <img
-          src={`${import.meta.env.BASE_URL}images/fotorscar.webp`}
+          src={`${import.meta.env.BASE_URL}images/fotorscar.avif`}
           alt="Geopende RS Car Detailing werkbus met gemonteerde slanghaspels en professionele reinigingsapparatuur"
           loading="eager"
           decoding="async"
