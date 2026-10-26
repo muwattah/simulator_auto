@@ -127,18 +127,17 @@ export default function HomePage({ onStart }: Props) {
 
       <section className="relative isolate min-h-[90svh] md:min-h-[92svh] flex items-end md:items-center overflow-hidden bg-[#07111b]" aria-labelledby="hero-title">
         <img
-          src={`${import.meta.env.BASE_URL}images/fotorscar.avif`}
+          src={`${import.meta.env.BASE_URL}images/fotorscar.jpg`}
           alt="Geopende RS Car Detailing werkbus met gemonteerde slanghaspels en professionele reinigingsapparatuur"
           loading="eager"
           decoding="async"
-          className="absolute inset-0 h-full w-full object-cover object-[center_42%] md:object-[center_46%]"
-          onError={e => {
-            const img = e.currentTarget;
-            if (!img.src.includes('realisations/interior-01.jpg')) img.src = `${import.meta.env.BASE_URL}realisations/interior-01.jpg`;
-          }}
+          className="rs-home-hero-image absolute inset-0 h-full w-full object-cover"
+          width={1440}
+          height={1800}
+          fetchPriority="high"
         />
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(90deg, rgba(4,12,21,.92) 0%, rgba(4,12,21,.77) 36%, rgba(4,12,21,.28) 74%, rgba(4,12,21,.15) 100%)' }} />
-        <div className="absolute inset-0 md:hidden pointer-events-none" style={{ background: 'linear-gradient(0deg, rgba(3,10,19,.96) 0%, rgba(3,10,19,.77) 34%, rgba(3,10,19,.09) 78%)' }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(90deg, rgba(4,12,21,.82) 0%, rgba(4,12,21,.65) 36%, rgba(4,12,21,.18) 74%, rgba(4,12,21,.08) 100%)' }} />
+        <div className="absolute inset-0 md:hidden pointer-events-none" style={{ background: 'linear-gradient(0deg, rgba(3,10,19,.88) 0%, rgba(3,10,19,.65) 34%, rgba(3,10,19,.05) 78%)' }} />
         <div className="absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-[var(--bg-primary)] to-transparent pointer-events-none" />
         <div className="container-content relative z-10 w-full pt-32 pb-20 sm:pb-24 md:py-36">
           <div className="max-w-[680px]">
