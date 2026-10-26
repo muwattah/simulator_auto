@@ -333,8 +333,12 @@ export const useConfiguratorStore = create<State>()(
       name: 'detailing-configurator-v1',
       version: 2,
       migrate: (persisted) => {
-        const old = persisted as Partial<State>;
-        return { ...old, configuration: { ...initialConfig }, visitedSteps: [] };
+        const old = persisted as Partial<Pick<State, 'quotes'>>;
+        return {
+          configuration: { ...initialConfig },
+          quotes: old.quotes ?? [],
+          visitedSteps: [],
+        };
       },
       partialize: (s) => ({
         configuration: s.configuration,
