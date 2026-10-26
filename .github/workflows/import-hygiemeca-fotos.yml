@@ -71,7 +71,7 @@ jobs:
                           req = Request(candidate, headers=headers)
                           with urlopen(req, timeout=22) as response:
                               body = response.read()
-                          if len(body) < 256 or body[:3] != b"\\xff\\xd8\\xff":
+                          if len(body) < 256 or body[:3] != bytes((255, 216, 255)):
                               raise RuntimeError("geen echte JPEG-foto")
                           path.parent.mkdir(parents=True, exist_ok=True)
                           path.write_bytes(body)
@@ -92,10 +92,10 @@ jobs:
           ok = [r for r in results if r[1]]
           failed = sorted((r for r in results if not r[1]), key=lambda r: r[0])
           root.mkdir(parents=True, exist_ok=True)
-          (root / "BRONNEN.txt").write_text("\\n".join(lines)+"\\n", encoding="utf-8")
+          (root / "BRONNEN.txt").write_text(chr(10).join(lines)+chr(10), encoding="utf-8")
           if failed:
               (root / "ONTBREKENDE_FOTOS.txt").write_text(
-                  "\\n".join(f"{r[0]}: {r[2]}" for r in failed) + "\\n", encoding="utf-8")
+                  chr(10).join(f"{r[0]}: {r[2]}" for r in failed) + chr(10), encoding="utf-8")
           else:
               (root / "ONTBREKENDE_FOTOS.txt").unlink(missing_ok=True)
           print(f"TOTAAL: {len(ok)} van de {len(photos)} foto's binnen", flush=True)
