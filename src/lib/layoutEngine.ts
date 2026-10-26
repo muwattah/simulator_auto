@@ -43,11 +43,11 @@ function zonePosition(
     case 'rearFrame.middleRight':
       return [W * 0.32, H * 0.42, rearZ + 0.05];
     case 'rearFrame.lowerLeft':
-      return [-W * 0.28, yMid, rearZ + 0.15];
+      return [-W * 0.28, yMid, rearZ + 0.05];
     case 'rearFrame.lowerCenter':
       return [0, yMid, midZ];
     case 'rearFrame.lowerRight':
-      return [W * 0.28, yMid, rearZ + 0.15];
+      return [W * 0.28, yMid, rearZ + 0.05];
     case 'leftWall':
       return [-W / 2 + sw / 2 + 0.04, yMid, midZ];
     case 'rightWall':
