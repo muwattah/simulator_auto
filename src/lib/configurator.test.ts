@@ -4,14 +4,19 @@ import { getProduct } from '../data/detailingCatalog';
 import { computeLayout, estimatedWaterWeight, getCargoSpace } from './layoutEngine';
 import { buildQuotePayload, snapshotFromPayload, formatQuoteSummary } from '../services/quoteService';
 import { calculatePricing } from './pricing';
+import { canChooseDemoOption } from './demoAvailability';
 import { captureConfiguration, configurationKey, registerCapture } from '../services/configurationCapture';
 
 const demo = { ...demoConfiguration, extraIds: [] };
 const layout = computeLayout(demo);
+assert.equal(demo.vehicleCategory, 'medium', 'only a medium generic van is displayed');
+assert.equal(demo.vehicleModelId, null, 'no van model chosen at start');
 assert.equal(layout.placements.length, 6, 'demo has six physical items, including two reels');
 assert(layout.fits, layout.warnings.join('\n'));
 assert(!layout.warnings.some(w => /overlapt|buiten de beschikbare/.test(w)), 'demo equipment must not overlap');
 assert.equal(estimatedWaterWeight(demo), 400);
+assert(canChooseDemoOption(demo, { tankId: 'tank_210' }, 'tank_210'), 'smaller tank is offered');
+assert(!canChooseDemoOption(demo, { tankId: 'tank_800' }, 'tank_800'), 'large tanks are not offered for the generic van');
 assert(layout.requiresInstallerReview, 'unknown dry weights prevent certified fitment');
 assert(layout.warnings.some(w => w.includes('Gewichtscontrole onvolledig')));
 
@@ -40,16 +45,20 @@ assert(captureConfiguration(demo), 'mobile keeps a matching image after leaving 
 const payload = buildQuotePayload({
   configurationId: 'RS-2026-TEST1234', createdAt: '2026-10-26T12:00:00Z',
   customer: { name: 'Test customer', email: 'demo@example.invalid', phone: '000' },
+  vehicleDescription: 'Ford Transit Custom 2021 L2',
   configuration: demo, pricing: calculatePricing(demo), estimatedWaterWeightKg: 400,
   layoutWarnings: layout.warnings, privacyConsent: true,
   previewImageDataUrl: captureConfiguration(demo),
 });
 assert.equal(payload.reviewStatus, 'awaiting-admin-review');
 assert.equal(payload.vehicle.modelId, demo.vehicleModelId);
+assert.equal(payload.vehicle.customerDescription, 'Ford Transit Custom 2021 L2');
+assert(formatQuoteSummary(payload).includes('Ford Transit Custom 2021 L2'));
 const snapshot = snapshotFromPayload(payload);
 assert.equal(snapshot.configurationId, payload.configurationId);
 assert.equal(snapshot.vehicleModelId, demo.vehicleModelId);
 assert.equal(snapshot.vehicleRoof, demo.vehicleRoof);
+assert.equal(snapshot.customerVehicleDescription, 'Ford Transit Custom 2021 L2');
 assert(formatQuoteSummary(payload).includes('geen definitieve offerte'));
 console.log('Configurator regression checks passed');
 
