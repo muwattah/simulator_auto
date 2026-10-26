@@ -1,64 +1,59 @@
 import { configurationKey, registerCapture } from '../services/configurationCapture';
-import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
+import { lazy, Suspense, useState, useCallback } from 'react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { getProduct } from '../data/detailingCatalog';
-import { formatPriceOrPending } from '../lib/pricing';
 import type { CameraPreset } from './three/VanScene3D';
 import type { VanViewSettings } from './three/VanBody3D';
-import { Box, Maximize2, RotateCcw, Trash2, X, AlertTriangle, SlidersHorizontal, CarFront, DoorOpen, ScanEye, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  Box, Maximize2, Minimize2, RotateCcw, Trash2, X,
+  SlidersHorizontal, DoorOpen, ScanEye, ZoomIn, ZoomOut,
+} from 'lucide-react';
 import VanVisualization from './VanVisualization';
 import DetailingPhotoGallery, { type PhotoGroup } from './DetailingPhotoGallery';
 
 const VanScene3D = lazy(() => import('./three/VanScene3D'));
+const CAMERAS: { id: CameraPreset; label: string }[] = [
+  { id: 'top', label: 'Boven' },
+  { id: 'overview', label: 'Schuin' },
+  { id: 'rear', label: 'Achter' },
+  { id: 'left', label: 'Links' },
+  { id: 'right', label: 'Rechts' },
+];
 
-function supportsWebGL(): boolean {
+function supportsWebGL() {
   try {
-    const c = document.createElement('canvas');
-    return !!(c.getContext('webgl') || c.getContext('experimental-webgl'));
+    const canvas = document.createElement('canvas');
+    return Boolean(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
   } catch {
     return false;
   }
 }
 
-const CAMERAS: { id: CameraPreset; label: string }[] = [
-  { id: 'overview', label: '3D' },
-  { id: 'rear', label: 'Achter' },
-  { id: 'left', label: 'Links' },
-  { id: 'right', label: 'Rechts' },
-  { id: 'top', label: 'Boven' },
-];
-
 export default function LoadSpaceViewer() {
-  const configuration = useConfiguratorStore((s) => s.configuration);
+  const configuration = useConfiguratorStore(s => s.configuration);
+  const step = useConfiguratorStore(s => s.step);
+  const space = useConfiguratorStore(s => s.getCargoSpace());
+  const layout = useConfiguratorStore(s => s.getLayout());
+  const selectedProductId = useConfiguratorStore(s => s.selectedProductId);
+  const setSelectedProductId = useConfiguratorStore(s => s.setSelectedProductId);
+  const removeProduct = useConfiguratorStore(s => s.removeProductById);
+
   const captureKey = configurationKey(configuration);
-  const onCaptureReady = useCallback((capture: (() => string | null) | null) => registerCapture(captureKey, capture), [captureKey]);
-  const step = useConfiguratorStore((s) => s.step);
-  const space = useConfiguratorStore((s) => s.getCargoSpace());
-  const layout = useConfiguratorStore((s) => s.getLayout());
-  const selectedProductId = useConfiguratorStore((s) => s.selectedProductId);
-  const setSelectedProductId = useConfiguratorStore((s) => s.setSelectedProductId);
-  const removeProductById = useConfiguratorStore((s) => s.removeProductById);
+  const onCaptureReady = useCallback((capture: (() => string | null) | null) =>
+    registerCapture(captureKey, capture), [captureKey]);
 
   const [mode, setMode] = useState<'3d' | '2d' | 'foto'>('3d');
-  const [force2d, setForce2d] = useState(false);
-  const [webglOk, setWebglOk] = useState(true);
-  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('overview');
+  const [webglOk] = useState(supportsWebGL);
+  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('top');
   const [cameraRevision, setCameraRevision] = useState(0);
   const [zoomStep, setZoomStep] = useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
-  const [warningsExpanded, setWarningsExpanded] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
-  const [vanSettings, setVanSettings] = useState<VanViewSettings>({
-    body: 'transparent',
-    roofVisible: true,
-    doorsOpen: true,
-  });
-  const updateVanSettings = (change: Partial<VanViewSettings>) =>
-    setVanSettings(current => ({ ...current, ...change }));
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [vanSettings, setVanSettings] = useState<VanViewSettings>({
+    body: 'transparent', roofVisible: false, doorsOpen: true,
+  });
 
-  useEffect(() => { setWebglOk(supportsWebGL()); }, []);
-
-  const effectiveMode = mode === 'foto' ? 'foto' : !webglOk || force2d ? '2d' : mode;
+  const effectiveMode = mode === 'foto' ? 'foto' : !webglOk ? '2d' : mode;
   const photoGroup: PhotoGroup =
     step === 'pressure' ? 'pressure'
       : step === 'power' ? 'generator'
@@ -66,139 +61,146 @@ export default function LoadSpaceViewer() {
       : step === 'extras' ? 'accessories'
       : step === 'compressor' ? 'reel' : 'van';
   const selected = selectedProductId ? getProduct(selectedProductId) : null;
-  const selectedPlacement = layout.placements.find((p) => p.productId === selectedProductId);
-  const liningVariant = getProduct(configuration.liningId)?.visual3D.variant ?? 'none';
-  const heightClass = expanded ? 'h-[77vh] min-h-[460px]' : 'h-[330px] sm:h-[440px] lg:h-[600px] 2xl:h-[680px]';
+  const variant = getProduct(configuration.liningId)?.visual3D.variant ?? 'none';
+  const heightClass = expanded
+    ? 'h-[80dvh] min-h-[440px]'
+    : 'h-[335px] sm:h-[465px] lg:h-[calc(100dvh-205px)] lg:min-h-[480px] lg:max-h-[880px]';
+
+  function chooseCamera(id: CameraPreset) {
+    setMode('3d');
+    setCameraPreset(id);
+    setCameraRevision(v => v + 1);
+  }
 
   return (
-    <div className="card overflow-hidden detailing-viewer">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 border-b border-[var(--border)] bg-[var(--surface-elevated)]">
-        <div className="flex items-center gap-2 min-w-0">
-          <Box size={15} className="text-[var(--accent)] shrink-0" />
-          <div className="min-w-0">
-            <h3 className="font-semibold text-sm text-[var(--text-primary)] leading-tight">Installatie in beeld</h3>
-            <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Live configuratie</p>
-          </div>
-          <span className="hidden sm:inline text-[10px] uppercase tracking-wide text-[var(--warning)] bg-[var(--warning)]/10 border border-[var(--warning)]/30 px-1.5 py-0.5 rounded">Demo</span>
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="flex rounded-md border border-[var(--border)] overflow-hidden text-xs font-semibold">
-            <button type="button" onClick={() => { setMode('3d'); setForce2d(false); }} className={`px-2.5 py-1.5 transition-colors ${effectiveMode === '3d' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>3D</button>
-            <button type="button" onClick={() => { setMode('2d'); setForce2d(true); }} className={`px-2.5 py-1.5 transition-colors ${effectiveMode === '2d' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>2D</button>
-            <button type="button" onClick={() => setMode('foto')}
-              aria-pressed={effectiveMode === 'foto'}
-              className={`px-2.5 py-1.5 transition-colors ${effectiveMode === 'foto' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>Foto's</button>
-          </div>
-          <button type="button" onClick={() => setExpanded((v) => !v)} className="p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--surface)]" title={expanded ? 'Verkleinen' : 'Vergroten'} aria-label={expanded ? 'Verkleinen' : 'Vergroten'}>
-            <Maximize2 size={16} />
-          </button>
-        </div>
-      </div>
-
-      {effectiveMode === '3d' && (
-        <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
-          {CAMERAS.map((cam) => (
-            <button key={cam.id} type="button" onClick={() => { setCameraPreset(cam.id); setCameraRevision(v => v + 1); }} className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors ${cameraPreset === cam.id ? 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-muted)]' : 'text-[var(--text-muted)] border border-transparent'}`}>{cam.label}</button>
-          ))}
-          <button type="button" aria-label="Inzoomen" onClick={() => setZoomStep(v => v + 1)}><ZoomIn size={17} /></button>
-          <button type="button" aria-label="Uitzoomen" onClick={() => setZoomStep(v => v - 1)}><ZoomOut size={17} /></button>
-          <button type="button" onClick={() => { setCameraPreset('overview'); setCameraRevision(v => v + 1); }} className="ml-auto p-1 text-[var(--text-muted)]" title="Reset camera" aria-label="Reset camera"><RotateCcw size={14} /></button>
-          <button type="button" onClick={() => setSettingsOpen(open => !open)}
-            className={`inline-flex gap-1 items-center px-2.5 py-1 rounded-md text-[11px] border font-semibold ${settingsOpen ? 'bg-[var(--accent-soft)] border-[var(--accent-muted)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}
-            aria-expanded={settingsOpen} aria-controls="van-display-settings">
-            <SlidersHorizontal size={13} /> Instellingen
-          </button>
-        </div>
-      )}
-
-
-      {effectiveMode === '3d' && settingsOpen && (
-        <div id="van-display-settings"
-          className="flex flex-wrap items-center gap-3 px-3 py-2 border-b border-[var(--border)] bg-[var(--surface-elevated)]">
-          <div className="inline-flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
-            <CarFront size={15} /> Carrosserie
-          </div>
-          <div className="flex rounded-md overflow-hidden border border-[var(--border)] text-[11px] font-semibold">
-            {([
-              ['transparent', 'Doorzichtig'],
-              ['solid', 'Gesloten'],
-              ['hidden', 'Verbergen'],
-            ] as const).map(([body, label]) => (
-              <button key={body} type="button" onClick={() => updateVanSettings({ body })}
-                aria-pressed={vanSettings.body === body}
-                className={`px-2.5 py-1.5 ${vanSettings.body === body ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={() => updateVanSettings({ doorsOpen: !vanSettings.doorsOpen })}
-            aria-pressed={vanSettings.doorsOpen}
-            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-md px-2.5 py-1.5 border ${vanSettings.doorsOpen ? 'border-[var(--accent-muted)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border)]'}`}>
-            <DoorOpen size={14} /> Achterdeuren {vanSettings.doorsOpen ? 'open' : 'dicht'}
-          </button>
-          <button type="button" onClick={() => updateVanSettings({ roofVisible: !vanSettings.roofVisible })}
-            aria-pressed={vanSettings.roofVisible}
-            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-md px-2.5 py-1.5 border ${!vanSettings.roofVisible ? 'border-[var(--accent-muted)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border)]'}`}>
-            <ScanEye size={14} /> Dak {vanSettings.roofVisible ? 'verbergen' : 'tonen'}
-          </button>
-          <span className="text-[10px] text-[var(--text-muted)]">Generieke 3D-bestelwagen · afmetingen indicatief</span>
-        </div>
-      )}
-
-      {layout.warnings.length > 0 && (
-        <details open={warningsExpanded} onToggle={e => setWarningsExpanded(e.currentTarget.open)} className="mx-3 mt-3 rounded-lg border border-[var(--warning)]/35 bg-[var(--warning)]/10 px-3 text-xs text-[var(--warning)]">
-          <summary className="min-h-[44px] flex items-center gap-2 cursor-pointer font-semibold"><AlertTriangle size={14} /> Controle en aandachtspunten ({layout.warnings.length})</summary>
-          <div className="pb-3 space-y-1">{layout.warnings.map((w, i) => <p key={i}>{w}</p>)}</div>
-        </details>
-      )}
-
-      <div className={`relative ${heightClass} viewer-shell !rounded-none !border-0`}>
-        {effectiveMode === 'foto' ? (
-          <div className="h-full overflow-y-auto p-3 sm:p-4">
-            <DetailingPhotoGallery key={photoGroup} group={photoGroup} />
-          </div>
-        ) : effectiveMode === '3d' ? (
-          <Suspense fallback={<div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">3D laden…</div>}>
-            <VanScene3D space={space} placements={layout.placements} liningVariant={liningVariant} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} cameraPreset={cameraPreset} cameraRevision={cameraRevision} zoomStep={zoomStep} vanSettings={vanSettings} onCaptureReady={onCaptureReady} />
+    <div className="detail-viewer overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+      <div className={'viewer-shell !rounded-none !border-0 relative ' + heightClass}>
+        {effectiveMode === '3d' ? (
+          <Suspense fallback={
+            <div className="relative h-full overflow-hidden bg-[#101720]">
+              <img src={import.meta.env.BASE_URL + 'realisations/workbench-01.jpg'} alt=""
+                className="h-full w-full object-cover opacity-35" />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                <span className="rounded-lg border border-white/10 bg-[#101720]/85 px-4 py-3 text-sm font-medium text-white">
+                  Jouw 3D-bestelwagen wordt geladen…
+                </span>
+              </div>
+            </div>
+          }>
+            <VanScene3D
+              space={space} placements={layout.placements} liningVariant={variant}
+              selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId}
+              cameraPreset={cameraPreset} cameraRevision={cameraRevision} zoomStep={zoomStep}
+              vanSettings={vanSettings} onCaptureReady={onCaptureReady}
+            />
           </Suspense>
+        ) : effectiveMode === 'foto' ? (
+          <div className="h-full overflow-y-auto bg-[var(--bg-secondary)] px-3 pt-12 pb-3">
+            <DetailingPhotoGallery group={photoGroup} compact />
+          </div>
         ) : (
-          <div className="p-3 h-full overflow-auto bg-[var(--bg-secondary)]">
+          <div className="h-full overflow-auto bg-[var(--bg-secondary)] px-3 pt-12 pb-3">
             <VanVisualization />
-            {(!webglOk || force2d) && <p className="text-xs text-center text-[var(--warning)] mt-2">2D-weergave actief{!webglOk ? ' (WebGL niet beschikbaar)' : ''}.</p>}
+            {!webglOk && <p className="mt-3 text-center text-xs text-[var(--text-muted)]">Deze browser toont de 2D-weergave omdat 3D niet beschikbaar is.</p>}
           </div>
         )}
+
+        <div className="absolute left-3 top-3 z-20 inline-flex overflow-hidden rounded-lg border border-white/10 bg-[#0b1320]/85 p-1 shadow-lg backdrop-blur-md">
+          {([
+            { id: '3d' as const, label: '3D' },
+            { id: '2d' as const, label: '2D' },
+            { id: 'foto' as const, label: "Foto's" },
+          ]).map(option => (
+            <button key={option.id} type="button" onClick={() => setMode(option.id)}
+              aria-pressed={effectiveMode === option.id}
+              className={'rounded-md px-3 py-1.5 text-[11px] font-bold transition-colors ' +
+                (effectiveMode === option.id ? 'bg-[var(--accent)] text-white' : 'text-white/75 hover:bg-white/10')}>
+              {option.label}
+            </button>
+          ))}
+        </div>
 
         {selected && effectiveMode === '3d' && (
-          <div className="absolute bottom-3 left-3 right-3 sm:left-auto sm:right-3 sm:w-72 bg-[var(--surface-elevated)]/95 backdrop-blur border border-[var(--border)] rounded-lg shadow-elevated p-3 z-10">
-            <div className="flex justify-between items-start gap-2 mb-1">
-              <p className="font-semibold text-sm text-[var(--text-primary)] leading-tight">{selected.name}</p>
-              <button type="button" onClick={() => setSelectedProductId(null)} className="text-[var(--text-muted)]" aria-label="Sluiten"><X size={16} /></button>
+          <aside className="absolute bottom-3 left-3 right-3 z-20 rounded-lg border border-[var(--border)] bg-[#101720]/95 p-3 text-white shadow-xl backdrop-blur-md sm:left-auto sm:w-64">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs font-bold">{selected.name}</p>
+              <button type="button" onClick={() => setSelectedProductId(null)} aria-label="Sluiten"
+                className="text-white/60 hover:text-white"><X size={16} /></button>
             </div>
-            <p className="text-[var(--accent)] font-bold text-sm">{formatPriceOrPending(selected.price)}</p>
-            {selectedPlacement && <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Zone: {selectedPlacement.zone}</p>}
-            {selected.capacityLiters && <p className="text-xs text-[var(--text-secondary)] mt-1">Capaciteit {selected.capacityLiters} L · Water ±{selected.capacityLiters} kg</p>}
-            {selected.specifications && (
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">{Object.entries(selected.specifications).map(([k, v]) => `${k}: ${v}`).join(' · ')}</p>
-            )}
-            <button type="button" onClick={() => removeProductById(selected.id)} className="mt-2 w-full text-xs py-2 rounded-md bg-[var(--danger)]/15 text-[var(--danger)] hover:bg-[var(--danger)]/25 border border-[var(--danger)]/25 inline-flex items-center justify-center gap-1 font-semibold">
-              <Trash2 size={12} /> Verwijderen
+            {selected.capacityLiters && <p className="mt-1 text-[11px] text-white/70">{selected.capacityLiters} liter</p>}
+            <button type="button" onClick={() => removeProduct(selected.id)}
+              className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-red-400/40 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-300">
+              <Trash2 size={13} /> Verwijderen
             </button>
-          </div>
+          </aside>
         )}
+
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden items-center gap-1.5 rounded-md bg-[#101720]/70 px-2.5 py-1.5 text-[10px] text-white/70 backdrop-blur-sm sm:inline-flex">
+          <Box size={13} /> Sleep om te draaien · Zoom met het muiswiel
+        </div>
       </div>
-      <div className="px-3 py-2 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] text-[var(--text-muted)]">
-          {effectiveMode === 'foto'
-            ? 'Bestaande product- en realisatiefoto’s als inspiratie. De gekozen configuratie blijft in het 3D-tabblad.'
-            : 'Indicatieve 3D-bestelwagen · Klik apparatuur voor details · Slepen: draaien · Scroll: zoom'}
-        </p>
-        {effectiveMode !== 'foto' && (
-          <button type="button" className="text-xs text-[var(--accent)] hover:underline"
-            onClick={() => setMode('foto')}>
-            Bekijk echte foto’s van detailinginstallaties
+
+      <div className="flex items-center gap-1.5 overflow-x-auto border-t border-[var(--border)] bg-[var(--surface)] p-2.5 scrollbar-thin sm:gap-2 sm:p-3">
+        {CAMERAS.map(cam => (
+          <button key={cam.id} type="button" onClick={() => chooseCamera(cam.id)}
+            aria-pressed={cameraPreset === cam.id && effectiveMode === '3d'}
+            className={'inline-flex h-10 shrink-0 items-center justify-center rounded-lg border px-3 text-xs font-bold transition-colors sm:px-4 ' +
+              (cameraPreset === cam.id && effectiveMode === '3d'
+                ? 'border-sky-500 bg-sky-500/15 text-sky-300'
+                : 'border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--text-secondary)] hover:text-white')}>
+            {cam.label}
           </button>
-        )}
+        ))}
+        <div className="mx-1 h-7 w-px shrink-0 bg-[var(--border)]" />
+        <button type="button" aria-label="Inzoomen" title="Inzoomen" onClick={() => setZoomStep(v => v + 1)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-white">
+          <ZoomIn size={18} />
+        </button>
+        <button type="button" aria-label="Uitzoomen" title="Uitzoomen" onClick={() => setZoomStep(v => v - 1)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-white">
+          <ZoomOut size={18} />
+        </button>
+        <button type="button" aria-label="Terug naar bovenaanzicht" title="Camera resetten" onClick={() => chooseCamera('top')}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-white">
+          <RotateCcw size={16} />
+        </button>
+        <button type="button" aria-label="Weergave-instellingen" title="Weergave-instellingen"
+          aria-expanded={settingsOpen} onClick={() => setSettingsOpen(v => !v)}
+          className={'ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ' +
+            (settingsOpen ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-[var(--border)] text-[var(--text-secondary)]')}>
+          <SlidersHorizontal size={17} />
+        </button>
+        <button type="button" aria-label={expanded ? 'Verkleinen' : 'Vergroten'} title={expanded ? 'Verkleinen' : 'Vergroten'}
+          onClick={() => setExpanded(v => !v)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-white">
+          {expanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+        </button>
       </div>
+
+      {settingsOpen && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--surface-elevated)] p-3">
+          {([
+            { id: 'transparent' as const, title: 'Transparante bus' },
+            { id: 'solid' as const, title: 'Gesloten bus' },
+            { id: 'hidden' as const, title: 'Alleen apparatuur' },
+          ]).map(o => (
+            <button type="button" key={o.id} onClick={() => setVanSettings(s => ({ ...s, body: o.id }))}
+              aria-pressed={vanSettings.body === o.id}
+              className={'rounded-md border px-2.5 py-2 text-xs ' +
+                (vanSettings.body === o.id ? 'border-sky-500 bg-sky-500/10 text-sky-300' : 'border-[var(--border)]')}>
+              {o.title}
+            </button>
+          ))}
+          <button type="button" onClick={() => setVanSettings(s => ({ ...s, roofVisible: !s.roofVisible }))}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-2 text-xs">
+            <ScanEye size={14} /> {vanSettings.roofVisible ? 'Dak verbergen' : 'Dak tonen'}
+          </button>
+          <button type="button" onClick={() => setVanSettings(s => ({ ...s, doorsOpen: !s.doorsOpen }))}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-2 text-xs">
+            <DoorOpen size={14} /> {vanSettings.doorsOpen ? 'Deuren sluiten' : 'Deuren openen'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

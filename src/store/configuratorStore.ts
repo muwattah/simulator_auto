@@ -65,8 +65,8 @@ interface State {
 }
 
 const initialConfig: DetailingConfiguration = {
-  vehicleCategory: null,
-  cabType: null,
+  vehicleCategory: 'medium',
+  cabType: 'single',
   vehicleModelId: null,
   vehicleLength: 'standard',
   vehicleRoof: 'standard',
@@ -92,7 +92,7 @@ const initialConfig: DetailingConfiguration = {
 export const useConfiguratorStore = create<State>()(
   persist(
     (set, get) => ({
-      step: 'vehicle',
+      step: 'tank',
       configuration: initialConfig,
       quotes: [],
       selectedProductId: null,
@@ -102,13 +102,13 @@ export const useConfiguratorStore = create<State>()(
 
       nextStep: () => {
         const idx = STEP_ORDER.indexOf(get().step);
-        const next = STEP_ORDER[idx + (get().configuration.vehicleCategory === 'trailer' && get().step === 'vehicle' ? 2 : 1)];
+        const next = STEP_ORDER[idx + 1];
         if (next) set({ step: next });
       },
 
       prevStep: () => {
         const idx = STEP_ORDER.indexOf(get().step);
-        const previous = STEP_ORDER[idx - (get().configuration.vehicleCategory === 'trailer' && get().step === 'tank' ? 2 : 1)];
+        const previous = STEP_ORDER[idx - 1];
         if (previous) set({ step: previous });
       },
 
@@ -243,7 +243,7 @@ export const useConfiguratorStore = create<State>()(
         });
       },
 
-      loadDemo: () => set({ configuration: { ...demoConfiguration, extraIds: [] }, step: 'vehicle', selectedProductId: null, visitedSteps: [] }),
+      loadDemo: () => set({ configuration: { ...demoConfiguration, extraIds: [] }, step: 'tank', selectedProductId: null, visitedSteps: [] }),
 
       resetConfiguration: () =>
         set({ configuration: initialConfig, step: 'vehicle', selectedProductId: null, visitedSteps: [] }),
@@ -258,8 +258,9 @@ export const useConfiguratorStore = create<State>()(
 
       getVehicleLabel: () => {
         const { vehicleCategory, cabType, vehicleModelId, vehicleLength, vehicleRoof } = get().configuration;
+        if (vehicleCategory === 'medium' && !vehicleModelId) return 'Algemene voorbeeldbestelwagen (Transit Custom-formaat)';
         const cat = getVehicleCategory(vehicleCategory);
-        if (!cat) return 'Nog geen voertuig';
+        if (!cat) return 'Algemene voorbeeldbestelwagen';
         const cab =
           vehicleCategory === 'trailer'
             ? ''
@@ -330,6 +331,15 @@ export const useConfiguratorStore = create<State>()(
     }),
     {
       name: 'detailing-configurator-v1',
+      version: 2,
+      migrate: (persisted) => {
+        const old = persisted as Partial<Pick<State, 'quotes'>>;
+        return {
+          configuration: { ...initialConfig },
+          quotes: old.quotes ?? [],
+          visitedSteps: [],
+        };
+      },
       partialize: (s) => ({
         configuration: s.configuration,
         quotes: s.quotes,

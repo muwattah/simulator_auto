@@ -56,6 +56,7 @@ export interface QuotePayload {
   customer: QuoteCustomer;
   vehicle: {
     modelId?: string | null;
+    customerDescription?: string;
     lengthVariant?: string;
     roofVariant?: string;
     availablePayloadKg?: number | null;
@@ -114,6 +115,7 @@ export function buildQuotePayload(params: {
   configurationId: string;
   createdAt: string;
   customer: QuoteCustomer;
+  vehicleDescription?: string;
   configuration: DetailingConfiguration;
   previewImageDataUrl?: string | null;
   pricing: PricingResult;
@@ -141,6 +143,7 @@ export function buildQuotePayload(params: {
     customer: params.customer,
     vehicle: {
       modelId: c.vehicleModelId,
+      customerDescription: params.vehicleDescription?.trim() || undefined,
       lengthVariant: c.vehicleLength,
       roofVariant: c.vehicleRoof,
       availablePayloadKg: c.availablePayloadKg,
@@ -207,9 +210,8 @@ export function formatQuoteSummary(payload: QuotePayload): string {
   if (payload.customer.location) lines.push(`- Locatie: ${payload.customer.location}`);
   lines.push('');
   lines.push('Voertuig:');
-  lines.push(`- Type: ${payload.vehicle.categoryName ?? '—'}`);
-  lines.push(`- Cabine: ${payload.vehicle.cabType ?? '—'}`);
-  lines.push(`- Model: ${payload.vehicle.modelId ?? '—'} · ${payload.vehicle.lengthVariant ?? 'standard'} · ${payload.vehicle.roofVariant ?? 'standard'}`);
+  lines.push('- 3D-weergave: algemene voorbeeldbestelwagen (geen exacte voertuigpassing)');
+  lines.push(`- Bestelwagen klant: ${payload.vehicle.customerDescription ?? 'nog niet opgegeven'}`);
   lines.push('- Status: wacht op beoordeling beheerder; geen definitieve offerte.');
   lines.push('');
   lines.push('Water:');
@@ -308,6 +310,7 @@ export function snapshotFromPayload(payload: QuotePayload): ConfigurationSnapsho
     vehicleCategory: payload.vehicle.categoryId as ConfigurationSnapshot['vehicleCategory'],
     cabType: payload.vehicle.cabType as ConfigurationSnapshot['cabType'],
     vehicleModelId: payload.vehicle.modelId,
+    customerVehicleDescription: payload.vehicle.customerDescription,
     vehicleLength: payload.vehicle.lengthVariant as ConfigurationSnapshot['vehicleLength'],
     vehicleRoof: payload.vehicle.roofVariant as ConfigurationSnapshot['vehicleRoof'],
     tank: payload.systems.tankId,

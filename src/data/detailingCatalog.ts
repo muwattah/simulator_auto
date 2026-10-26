@@ -556,8 +556,6 @@ export function getVehicleCategory(id: VehicleCategory | null): VehicleCategoryO
 }
 
 export const STEP_ORDER: import('../types').ConfigStep[] = [
-  'vehicle',
-  'cab',
   'tank',
   'pressure',
   'compressor',
