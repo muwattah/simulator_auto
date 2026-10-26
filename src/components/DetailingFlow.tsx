@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
-import { useState, useEffect } from 'react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import {
-  vehicleCategories,
   tankOptions,
   pressureOptions,
   pressureReelOptions,
@@ -19,24 +17,19 @@ import {
   getProduct,
 } from '../data/detailingCatalog';
 import LoadSpaceViewer from './LoadSpaceViewer';
-import DetailingPhotoGallery from './DetailingPhotoGallery';
-import { vehicleModels } from '../data/vehicleModels';
 import QuoteForm from './QuoteForm';
 import { formatPriceOrPending } from '../lib/pricing';
 import { estimatedWaterWeight } from '../lib/layoutEngine';
-import { DEMO_MODE } from '../types';
+import { canChooseDemoOption } from '../lib/demoAvailability';
+import type { DetailingConfiguration } from '../types';
 import {
   ChevronLeft,
   ChevronRight,
   Check,
-  Truck,
   Droplets,
   Zap,
   Wind,
   Package,
-  List,
-  Box,
-  LayoutGrid,
 } from 'lucide-react';
 
 function OptionCard({
@@ -62,12 +55,12 @@ function OptionCard({
       data-selected={selected}
       data-disabled={disabled || undefined}
       aria-pressed={selected}
-      className="option-card"
+      className="option-card !p-2.5"
     >
       <div className="flex justify-between items-start gap-2">
         <div className="min-w-0">
-          <p className="font-semibold text-[var(--text-primary)] leading-snug">{title}</p>
-          {subtitle && <p className="text-sm text-[var(--text-secondary)] mt-0.5 leading-snug">{subtitle}</p>}
+          <p className="font-semibold text-[13px] text-[var(--text-primary)] leading-snug">{title}</p>
+          {subtitle && <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 leading-snug">{subtitle}</p>}
           {children}
         </div>
         <span
@@ -88,8 +81,7 @@ function OptionCard({
 function ProgressBar() {
   const step = useConfiguratorStore((s) => s.step);
   const setStep = useConfiguratorStore((s) => s.setStep);
-  const configuration = useConfiguratorStore((s) => s.configuration);
-  const compact = STEP_ORDER.filter((s) => s !== 'cab' || configuration.vehicleCategory !== 'trailer');
+  const compact = STEP_ORDER;
   const currentIdx = Math.max(0, compact.indexOf(step as (typeof compact)[number]));
   const total = compact.length;
   const progress = total > 0 ? ((currentIdx + 1) / total) * 100 : 0;
@@ -147,8 +139,6 @@ function Checklist() {
   const c = useConfiguratorStore((s) => s.configuration);
   const visited = useConfiguratorStore((s) => s.visitedSteps);
   const items: { label: string; ok: boolean }[] = [
-    { label: 'VOERTUIG', ok: !!c.vehicleCategory },
-    { label: 'CABINE', ok: c.vehicleCategory === 'trailer' || !!c.cabType },
     { label: 'WATER', ok: visited.includes('tank') },
     { label: 'HOGEDRUK', ok: visited.includes('pressure') },
     { label: 'LUCHT', ok: visited.includes('compressor') },
@@ -289,11 +279,6 @@ function StepContent() {
   const c = useConfiguratorStore((s) => s.configuration);
   const markVisited = useConfiguratorStore((s) => s.markVisited);
   const {
-    setVehicleCategory,
-    setVehicleModel,
-    setVehicleLength,
-    setVehicleRoof,
-    setCabType,
     setTank,
     setFloatValve,
     setPressureWasher,
@@ -312,98 +297,8 @@ function StepContent() {
     setSpecialRequests,
   } = useConfiguratorStore();
 
-  const categoryCompatible = (id: string | null): boolean => {
-    const eligible = getProduct(id)?.compatibility.vehicleCategories;
-    return !eligible || !c.vehicleCategory || eligible.includes(c.vehicleCategory);
-  };
-
-  if (step === 'vehicle') {
-    return (
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
-          <Truck size={20} /> Welk type voertuig wil je inrichten?
-        </h2>
-        <div className="grid sm:grid-cols-2 gap-3">
-          {vehicleCategories.map((v) => (
-            <OptionCard
-              key={v.id}
-              selected={c.vehicleCategory === v.id}
-              onClick={() => { setVehicleCategory(v.id); markVisited('vehicle'); }}
-              title={v.name}
-              subtitle={v.description}
-            >
-              <p className="text-xs text-[var(--text-muted)] mt-2">{v.examples.slice(0, 3).join(' · ')}</p>
-            </OptionCard>
-          ))}
-        </div>
-        {c.vehicleCategory && <div>
-          <label htmlFor="available-payload" className="block text-xs font-semibold mb-2">Resterend laadvermogen (kg, optioneel)</label>
-          <input id="available-payload" type="number" min="0" step="1" className="input w-full" placeholder="Na inzittenden en bestaande lading" value={c.availablePayloadKg ?? ''} onChange={e => useConfiguratorStore.getState().setAvailablePayload(e.target.value === '' ? null : Number(e.target.value))} />
-        </div>}
-        {c.vehicleCategory && (
-          <div className="space-y-3 pt-4 border-t border-[var(--border)]">
-            <div>
-              <h3 className="font-semibold text-sm mb-2">Welk merk en model?</h3>
-              <select
-                className="input w-full"
-                aria-label="Merk en model van de bestelwagen"
-                value={c.vehicleModelId ?? vehicleModels.find(model => model.category === c.vehicleCategory)?.id ?? ''}
-                onChange={e => setVehicleModel(e.target.value)}
-              >
-                {vehicleModels.filter(model => model.category === c.vehicleCategory).map(model => (
-                  <option key={model.id} value={model.id}>{model.display}</option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="vehicle-length" className="block text-xs font-semibold mb-2">Lengtevariant</label>
-                <select id="vehicle-length" className="input w-full" value={c.vehicleLength ?? 'standard'}
-                  onChange={e => setVehicleLength(e.target.value as 'standard' | 'long')}>
-                  <option value="standard">Standaardlengte</option>
-                  <option value="long">Verlengd</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="vehicle-roof" className="block text-xs font-semibold mb-2">Dakhoogte</label>
-                <select id="vehicle-roof" className="input w-full" value={c.vehicleRoof ?? 'standard'}
-                  onChange={e => setVehicleRoof(e.target.value as 'standard' | 'high')}>
-                  <option value="standard">Normaal (H1)</option>
-                  {c.vehicleCategory !== 'small' && <option value="high">Hoog (H2)</option>}
-                </select>
-              </div>
-            </div>
-            <p className="text-xs text-[var(--text-muted)]">
-              {c.vehicleModelId === 'mercedes-sprinter' && c.cabType === 'single' && c.vehicleLength === 'standard' && c.vehicleRoof === 'high' && <span className="block mb-2">Demo-envelop Sprinter standaard RWD hoog dak: 3375 × 1787 × 2009 mm. <a className="underline" href="https://www.mercedes-benz.co.uk/vans/models/sprinter/panel-van/overview.html" target="_blank" rel="noreferrer">Bron: Mercedes-Benz</a>. Exact bouwjaar en uitvoering blijven te controleren.</span>}
-              Dit is een generiek 3D-voertuig met indicatieve laadruimteafmetingen.
-              Geen fabrikant-CAD of gegarandeerde maatvoering. De gekozen uitrusting blijft specifiek voor detailing.
-            </p>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (step === 'cab') {
-    if (c.vehicleCategory === 'trailer') {
-      return (
-        <div className="space-y-3">
-          <h2 className="text-lg font-bold">Cabine</h2>
-          <p className="text-sm text-[var(--text-secondary)]">Niet van toepassing op aanhangwagen.</p>
-        </div>
-      );
-    }
-    return (
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold text-[var(--text-primary)]">Welke cabine heeft het voertuig?</h2>
-        <p className="text-sm text-[var(--text-muted)]">Dubbele cabine = minder laadlengte in de 3D-simulatie (demo-afmetingen).</p>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <OptionCard selected={c.cabType === 'single'} onClick={() => { setCabType('single'); markVisited('cab'); }} title="Enkele cabine" subtitle="Maximale laadlengte" />
-          <OptionCard selected={c.cabType === 'double'} onClick={() => { setCabType('double'); markVisited('cab'); }} title="Dubbele cabine" subtitle="Kortere laadruimte" />
-        </div>
-      </div>
-    );
-  }
+  const available = (patch: Partial<DetailingConfiguration>, productId: string | null, selected = false) =>
+    canChooseDemoOption(c, patch, productId, selected);
 
   if (step === 'tank') {
     return (
@@ -412,13 +307,12 @@ function StepContent() {
           <Droplets size={20} /> Welke watertank wil je?
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {tankOptions.map((o) => (
+          {tankOptions.filter(o => available({ tankId: o.id }, o.id, c.tankId === o.id)).map((o) => (
             <OptionCard
               key={String(o.id)}
               selected={c.tankId === o.id}
               onClick={() => { setTank(o.id); markVisited('tank'); }}
               title={o.label}
-              disabled={!categoryCompatible(o.id)}
             />
           ))}
         </div>
@@ -440,13 +334,13 @@ function StepContent() {
       <div className="space-y-4">
         <h2 className="text-lg font-bold">Hogedrukoplossing</h2>
         <div className="grid sm:grid-cols-2 gap-2">
-          {pressureOptions.map((o) => (
+          {pressureOptions.filter(o => available({ pressureWasherId: o.id }, o.id, c.pressureWasherId === o.id)).map((o) => (
             <OptionCard key={String(o.id)} selected={c.pressureWasherId === o.id} onClick={() => { setPressureWasher(o.id); markVisited('pressure'); }} title={o.label} />
           ))}
         </div>
         <h3 className="font-semibold">Hogedrukhaspel — 200 bar</h3>
         <div className="grid sm:grid-cols-2 gap-2">
-          {pressureReelOptions.map((o) => (
+          {pressureReelOptions.filter(o => available({ pressureReelId: o.id }, o.id, c.pressureReelId === o.id)).map((o) => (
             <OptionCard key={String(o.id)} selected={c.pressureReelId === o.id} onClick={() => { setPressureReel(o.id); markVisited('pressure'); }} title={o.label} />
           ))}
         </div>
@@ -461,16 +355,16 @@ function StepContent() {
           <Wind size={20} /> Compressor
         </h2>
         <div className="grid sm:grid-cols-2 gap-2">
-          {compressorOptions.map((o) => (
+          {compressorOptions.filter(o => available({ compressorId: o.id }, o.id, c.compressorId === o.id)).map((o) => (
             <OptionCard key={String(o.id)} selected={c.compressorId === o.id} onClick={() => { setCompressor(o.id); markVisited('compressor'); }} title={o.label}
-              disabled={!categoryCompatible(o.id)} />
+ />
           ))}
         </div>
         {c.compressorId && (
           <>
             <h3 className="font-semibold">Persluchthaspel — 20 bar</h3>
             <div className="grid sm:grid-cols-2 gap-2">
-              {airReelOptions.map((o) => (
+              {airReelOptions.filter(o => available({ airReelId: o.id }, o.id, c.airReelId === o.id)).map((o) => (
                 <OptionCard key={String(o.id)} selected={c.airReelId === o.id} onClick={() => setAirReel(o.id)} title={o.label} />
               ))}
             </div>
@@ -487,14 +381,14 @@ function StepContent() {
           <Zap size={20} /> Generator
         </h2>
         <div className="grid sm:grid-cols-2 gap-2">
-          {generatorOptions.map((o) => (
+          {generatorOptions.filter(o => available({ generatorId: o.id }, o.id, c.generatorId === o.id)).map((o) => (
             <OptionCard key={String(o.id)} selected={c.generatorId === o.id} onClick={() => { setGenerator(o.id); markVisited('power'); }} title={o.label}
               disabled={!categoryCompatible(o.id)} />
           ))}
         </div>
         <h3 className="font-semibold">Stroomhaspel</h3>
         <div className="grid sm:grid-cols-2 gap-2">
-          {powerReelOptions.map((o) => (
+          {powerReelOptions.filter(o => available({ powerReelId: o.id }, o.id, c.powerReelId === o.id)).map((o) => (
             <OptionCard key={String(o.id)} selected={c.powerReelId === o.id} onClick={() => { setPowerReel(o.id); markVisited('power'); }} title={o.label} />
           ))}
         </div>
@@ -507,7 +401,7 @@ function StepContent() {
       <div className="space-y-3">
         <h2 className="text-lg font-bold">Stofzuiger</h2>
         <div className="grid sm:grid-cols-1 gap-2">
-          {vacuumOptions.map((o) => (
+          {vacuumOptions.filter(o => available({ vacuumId: o.id }, o.id, c.vacuumId === o.id)).map((o) => (
             <OptionCard key={String(o.id)} selected={c.vacuumId === o.id} onClick={() => { setVacuum(o.id); markVisited('vacuum'); }} title={o.label} />
           ))}
         </div>
@@ -533,11 +427,10 @@ function StepContent() {
       <div className="space-y-3">
         <h2 className="text-lg font-bold">Frame-opstelling</h2>
         <div className="grid gap-2">
-          {frameOptions.map((o) => (
+          {frameOptions.filter(o => available({ frameComboId: o.id }, o.id, c.frameComboId === o.id)).map((o) => (
             <OptionCard key={o.id} selected={c.frameComboId === o.id} onClick={() => { setFrameCombo(o.id); markVisited('frame'); }} title={o.label} />
           ))}
         </div>
-        <DetailingPhotoGallery group="frame" compact />
       </div>
     );
   }
@@ -547,16 +440,15 @@ function StepContent() {
       <div className="space-y-4">
         <h2 className="text-lg font-bold">Extra's</h2>
         <div className="grid sm:grid-cols-2 gap-2">
-          <OptionCard selected={c.bottleHolder} onClick={() => { setBottleHolder(!c.bottleHolder); markVisited('extras'); }} title="Bottle holder set" />
-          <OptionCard selected={c.bucketHolder} onClick={() => { setBucketHolder(!c.bucketHolder); markVisited('extras'); }} title="Bucket holder set" />
+          {(c.bottleHolder || available({ bottleHolder: true }, 'bottle_holder')) && <OptionCard selected={c.bottleHolder} onClick={() => { setBottleHolder(!c.bottleHolder); markVisited('extras'); }} title="Bottle holder set" />}
+          {(c.bucketHolder || available({ bucketHolder: true }, 'bucket_holder')) && <OptionCard selected={c.bucketHolder} onClick={() => { setBucketHolder(!c.bucketHolder); markVisited('extras'); }} title="Bucket holder set" />}
         </div>
         <h3 className="font-semibold">Extra apparatuur</h3>
         <div className="grid sm:grid-cols-2 gap-2">
-          {extraOptions.map((o) => (
+          {extraOptions.filter(o => available({ extraIds: [...c.extraIds, o.id] }, o.id, c.extraIds.includes(o.id))).map((o) => (
             <OptionCard key={o.id} selected={c.extraIds.includes(o.id)} onClick={() => { toggleExtra(o.id); markVisited('extras'); }} title={o.label} />
           ))}
         </div>
-        <DetailingPhotoGallery group="accessories" compact />
       </div>
     );
   }
@@ -588,13 +480,11 @@ function StepContent() {
       <div>
         <h2 className="text-lg font-bold">Overzicht configuratie</h2>
         <div className="card p-4 text-sm space-y-1 mt-3">
-          <p><strong>Voertuig:</strong> {useConfiguratorStore.getState().getVehicleLabel()}</p>
+          <p><strong>3D voorbeeld:</strong> Algemene bestelwagen in Transit Custom-formaat</p>
           <p><strong>Onderdelen:</strong> {snap.pendingPriceItems.length} geselecteerd (prijzen op aanvraag)</p>
           <p><strong>Watergewicht:</strong> ±{snap.estimatedWaterWeightKg} kg</p>
           <p className="text-[10px] text-[var(--text-muted)]">Geschat gewicht van het water; voertuigbelasting en toegestane massa moeten afzonderlijk gecontroleerd worden.</p>
-          {snap.layoutWarnings.length > 0 && (
-            <div className="text-[var(--warning)] text-xs mt-2">{snap.layoutWarnings.map((w, i) => <p key={i}>{w}</p>)}</div>
-          )}
+          <p className="text-[11px] text-[var(--text-muted)] mt-2">Vertel ons hieronder welke bestelwagen je zelf hebt. De definitieve inbouw en belading controleren we bij de offerte.</p>
           {snap.specialRequests && <p className="mt-2"><strong>Wensen:</strong> {snap.specialRequests}</p>}
         </div>
       </div>
@@ -610,102 +500,45 @@ export default function DetailingFlow() {
   const nextStep = useConfiguratorStore((s) => s.nextStep);
   const prevStep = useConfiguratorStore((s) => s.prevStep);
   const markVisited = useConfiguratorStore((s) => s.markVisited);
-  const configuration = useConfiguratorStore((s) => s.configuration);
-
-  const canNext = (() => {
-    if (step === 'vehicle') return !!configuration.vehicleCategory;
-    if (step === 'cab') return configuration.vehicleCategory === 'trailer' || !!configuration.cabType;
-    return true;
-  })();
 
   const handleNext = () => {
     markVisited(step);
     nextStep();
   };
 
-  const [mobileTab, setMobileTab] = useState<'keuzes' | '3d' | 'overzicht'>('keuzes');
-  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
-  useEffect(() => {
-    const query = window.matchMedia('(min-width: 1024px)');
-    const update = () => setIsDesktop(query.matches);
-    query.addEventListener('change', update);
-    return () => query.removeEventListener('change', update);
-  }, []);
-
   return (
-    <div className="max-w-[1600px] mx-auto px-3 sm:px-5 py-4 pb-safe lg:pb-8">
-      {DEMO_MODE && (
-        <div className="mb-3 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 px-3 py-2 text-xs text-[var(--warning)]">
-          <strong>Demoversie</strong> — productgegevens en prijzen worden nog aangevuld. Geen bindende offerte.
+    <div className="max-w-[1600px] mx-auto px-2.5 sm:px-4 py-2 pb-8">
+      <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+        <div className="min-w-0">
+          <h1 className="text-sm sm:text-base font-bold">Stel jouw mobiele detailinginstallatie samen</h1>
+          <p className="text-[11px] text-[var(--text-muted)]">Eén algemene voorbeeldbus · kies onderdelen en zie ze meteen in 3D</p>
         </div>
-      )}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <div><p className="text-xs uppercase tracking-widest text-[var(--accent)]">Installation studio</p>
-          <h1 className="text-xl font-bold">Jouw mobiele werkplaats, in 3D</h1>
-          <p className="text-xs text-[var(--text-muted)] mt-1">Stel samen · Bekijk van alle kanten · Bewaar je ontwerp</p></div>
-        <button type="button" className="btn-secondary min-h-[44px]" onClick={() => { useConfiguratorStore.getState().loadDemo(); setMobileTab('3d'); if (!isDesktop) setTimeout(() => document.querySelector('.detailing-viewer')?.scrollIntoView({ block: 'start', behavior: 'instant' }), 0); }}>Laad de 3D-demo</button>
       </div>
-      <div className="mb-4"><ProgressBar /></div>
-
-      {isDesktop && <div className="lg:grid lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-3 space-y-4">
-          <div className="card p-5">
+      <div className="mb-2"><ProgressBar /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 lg:gap-3 lg:items-start">
+        <div className="order-2 lg:order-1 lg:col-span-5 min-w-0">
+          <div className="card p-3 sm:p-3.5 detailing-choice-panel">
             <StepContent />
-            <div className="flex justify-between gap-2 mt-6 pt-4 border-t border-[var(--border)]">
-              <button type="button" onClick={prevStep} className="btn-secondary btn-sm" disabled={step === 'vehicle'}>
+            <div className="flex justify-between gap-2 mt-4 pt-3 border-t border-[var(--border)]">
+              <button type="button" onClick={prevStep} className="btn-secondary btn-sm" disabled={step === 'tank'}>
                 <ChevronLeft size={16} /> Terug
               </button>
               {step !== 'overview' && (
-                <button type="button" onClick={handleNext} disabled={!canNext} className="btn-primary btn-sm">
+                <button type="button" onClick={handleNext} className="btn-primary btn-sm">
                   Volgende <ChevronRight size={16} />
                 </button>
               )}
             </div>
           </div>
+          <details className="card mt-2.5 p-3 text-xs">
+            <summary className="cursor-pointer font-semibold">Mijn gekozen onderdelen bekijken</summary>
+            <div className="mt-2"><ConfigSummary /></div>
+          </details>
         </div>
-        <div className="lg:col-span-7"><LoadSpaceViewer /></div>
-        <div className="lg:col-span-2"><ConfigSummary /></div>
-      </div>}
-
-      {!isDesktop && <div>
-        <div className="mb-3">
-          {mobileTab === 'keuzes' && (
-            <div className="card p-4">
-              <StepContent />
-              <div className="flex justify-between gap-2 mt-6 pt-4 border-t border-[var(--border)]">
-                <button type="button" onClick={prevStep} className="btn-secondary btn-sm" disabled={step === 'vehicle'}>
-                  <ChevronLeft size={16} /> Terug
-                </button>
-                {step !== 'overview' && (
-                  <button type="button" onClick={handleNext} disabled={!canNext} className="btn-primary btn-sm">
-                    Volgende <ChevronRight size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-          {mobileTab === '3d' && <LoadSpaceViewer />}
-          {mobileTab === 'overzicht' && <ConfigSummary />}
+        <div className="order-1 lg:order-2 lg:col-span-7 min-w-0 sticky top-[64px] z-20 lg:top-[76px]">
+          <LoadSpaceViewer />
         </div>
-        <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--border)] bg-[var(--bg-primary)]/95 backdrop-blur-md bottom-nav-safe" aria-label="Configurator navigatie">
-          <div className="grid grid-cols-3 max-w-lg mx-auto">
-            {([
-              { id: 'keuzes' as const, label: 'Keuzes', icon: List },
-              { id: '3d' as const, label: '3D', icon: Box },
-              { id: 'overzicht' as const, label: 'Overzicht', icon: LayoutGrid },
-            ]).map((tab) => {
-              const Icon = tab.icon;
-              const active = mobileTab === tab.id;
-              return (
-                <button key={tab.id} type="button" onClick={() => setMobileTab(tab.id)} className={`flex flex-col items-center gap-0.5 py-3 text-[11px] font-semibold transition-colors ${active ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
-                  <Icon size={20} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      </div>}
+      </div>
     </div>
   );
 }
