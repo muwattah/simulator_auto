@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import {
   vehicleCategories,
@@ -238,7 +238,7 @@ function ConfigSummary() {
                 <p className="text-[var(--text-primary)] truncate">{r.value}</p>
               </div>
               {r.id && (
-                <button type="button" className="text-xs text-[var(--danger)] shrink-0" onClick={() => removeProductById(r.id!)}>
+                <button type="button" aria-label={`Verwijder ${r.label}`} className="text-xs text-[var(--danger)] shrink-0 min-h-[44px] min-w-[44px]" onClick={() => removeProductById(r.id!)}>
                   ×
                 </button>
               )}
@@ -336,6 +336,10 @@ function StepContent() {
             </OptionCard>
           ))}
         </div>
+        {c.vehicleCategory && <div>
+          <label htmlFor="available-payload" className="block text-xs font-semibold mb-2">Resterend laadvermogen (kg, optioneel)</label>
+          <input id="available-payload" type="number" min="0" step="1" className="input w-full" placeholder="Na inzittenden en bestaande lading" value={c.availablePayloadKg ?? ''} onChange={e => useConfiguratorStore.getState().setAvailablePayload(e.target.value === '' ? null : Number(e.target.value))} />
+        </div>}
         {c.vehicleCategory && (
           <div className="space-y-3 pt-4 border-t border-[var(--border)]">
             <div>
@@ -353,11 +357,11 @@ function StepContent() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="vehicle-length" className="block text-xs font-semibold mb-2">Wielbasis</label>
+                <label htmlFor="vehicle-length" className="block text-xs font-semibold mb-2">Lengtevariant</label>
                 <select id="vehicle-length" className="input w-full" value={c.vehicleLength ?? 'standard'}
                   onChange={e => setVehicleLength(e.target.value as 'standard' | 'long')}>
-                  <option value="standard">Standaard (L1)</option>
-                  <option value="long">Lang (L2)</option>
+                  <option value="standard">Standaardlengte</option>
+                  <option value="long">Verlengd</option>
                 </select>
               </div>
               <div>
@@ -370,7 +374,8 @@ function StepContent() {
               </div>
             </div>
             <p className="text-xs text-[var(--text-muted)]">
-              Dit is momenteel een generiek 3D-voertuig met indicatieve laadruimteafmetingen.
+              {c.vehicleModelId === 'mercedes-sprinter' && c.cabType === 'single' && c.vehicleLength === 'standard' && c.vehicleRoof === 'high' && <span className="block mb-2">Demo-envelop Sprinter standaard RWD hoog dak: 3375 × 1787 × 2009 mm. <a className="underline" href="https://www.mercedes-benz.co.uk/vans/models/sprinter/panel-van/overview.html" target="_blank" rel="noreferrer">Bron: Mercedes-Benz</a>. Exact bouwjaar en uitvoering blijven te controleren.</span>}
+              Dit is een generiek 3D-voertuig met indicatieve laadruimteafmetingen.
               Geen fabrikant-CAD of gegarandeerde maatvoering. De gekozen uitrusting blijft specifiek voor detailing.
             </p>
           </div>
@@ -619,6 +624,13 @@ export default function DetailingFlow() {
   };
 
   const [mobileTab, setMobileTab] = useState<'keuzes' | '3d' | 'overzicht'>('keuzes');
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
 
   return (
     <div className="max-w-[1600px] mx-auto px-3 sm:px-5 py-4 pb-safe lg:pb-8">
@@ -627,9 +639,15 @@ export default function DetailingFlow() {
           <strong>Demoversie</strong> — productgegevens en prijzen worden nog aangevuld. Geen bindende offerte.
         </div>
       )}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <div><p className="text-xs uppercase tracking-widest text-[var(--accent)]">Installation studio</p>
+          <h1 className="text-xl font-bold">Jouw mobiele werkplaats, in 3D</h1>
+          <p className="text-xs text-[var(--text-muted)] mt-1">Stel samen · Bekijk van alle kanten · Bewaar je ontwerp</p></div>
+        <button type="button" className="btn-secondary min-h-[44px]" onClick={() => { useConfiguratorStore.getState().loadDemo(); setMobileTab('3d'); if (!isDesktop) setTimeout(() => document.querySelector('.detailing-viewer')?.scrollIntoView({ block: 'start', behavior: 'instant' }), 0); }}>Laad de 3D-demo</button>
+      </div>
       <div className="mb-4"><ProgressBar /></div>
 
-      <div className="hidden lg:grid lg:grid-cols-12 gap-4">
+      {isDesktop && <div className="lg:grid lg:grid-cols-12 gap-4">
         <div className="lg:col-span-3 space-y-4">
           <div className="card p-5">
             <StepContent />
@@ -647,9 +665,9 @@ export default function DetailingFlow() {
         </div>
         <div className="lg:col-span-7"><LoadSpaceViewer /></div>
         <div className="lg:col-span-2"><ConfigSummary /></div>
-      </div>
+      </div>}
 
-      <div className="lg:hidden">
+      {!isDesktop && <div>
         <div className="mb-3">
           {mobileTab === 'keuzes' && (
             <div className="card p-4">
@@ -687,7 +705,7 @@ export default function DetailingFlow() {
             })}
           </div>
         </nav>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -216,3 +216,8 @@ body {
 .bottom-nav-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* Scoped to the configurator; homepage styling remains unchanged. */
+.detailing-viewer button { min-height: 44px; min-width: 44px; }
+
+.detailing-viewer { scroll-margin-top: 74px; }

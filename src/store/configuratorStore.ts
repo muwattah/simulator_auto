@@ -1,3 +1,4 @@
+import { demoConfiguration } from '../data/demoConfiguration';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
@@ -33,6 +34,7 @@ interface State {
   setVehicleLength: (value: VehicleLength) => void;
   setVehicleRoof: (value: VehicleRoof) => void;
   setCabType: (c: CabType) => void;
+  setAvailablePayload: (kg: number | null) => void;
   setTank: (id: string | null) => void;
   setFloatValve: (v: boolean | null) => void;
   setPressureWasher: (id: string | null) => void;
@@ -52,12 +54,13 @@ interface State {
   setSelectedProductId: (id: string | null) => void;
   removeProductById: (id: string) => void;
   resetConfiguration: () => void;
+  loadDemo: () => void;
   getPricing: () => ReturnType<typeof calculatePricing>;
   getLayout: () => ReturnType<typeof computeLayout>;
   getCargoSpace: () => ReturnType<typeof getCargoSpace>;
   getVehicleLabel: () => string;
   buildSnapshot: () => ConfigurationSnapshot;
-  submitQuote: (customer: Customer) => Quote;
+  submitQuote: (customer: Customer, snapshot?: ConfigurationSnapshot) => Quote;
   isStepComplete: (step: ConfigStep) => boolean;
 }
 
@@ -159,6 +162,7 @@ export const useConfiguratorStore = create<State>()(
       setVehicleRoof: (vehicleRoof) => set(s => ({
         configuration: { ...s.configuration, vehicleRoof },
       })),
+      setAvailablePayload: (kg) => set(s => ({ configuration: { ...s.configuration, availablePayloadKg: kg != null && Number.isFinite(kg) && kg >= 0 ? kg : null } })),
       setCabType: (c) => set((s) => ({ configuration: { ...s.configuration, cabType: c } })),
 
       setTank: (id) =>
@@ -239,6 +243,8 @@ export const useConfiguratorStore = create<State>()(
         });
       },
 
+      loadDemo: () => set({ configuration: { ...demoConfiguration, extraIds: [] }, step: 'vehicle', selectedProductId: null, visitedSteps: [] }),
+
       resetConfiguration: () =>
         set({ configuration: initialConfig, step: 'vehicle', selectedProductId: null, visitedSteps: [] }),
 
@@ -247,7 +253,7 @@ export const useConfiguratorStore = create<State>()(
       getCargoSpace: () =>
         getCargoSpace(
           get().configuration.vehicleCategory, get().configuration.cabType,
-          get().configuration.vehicleLength, get().configuration.vehicleRoof
+          get().configuration.vehicleLength, get().configuration.vehicleRoof, get().configuration.vehicleModelId
         ),
 
       getVehicleLabel: () => {
@@ -304,8 +310,8 @@ export const useConfiguratorStore = create<State>()(
         };
       },
 
-      submitQuote: (customer) => {
-        const snapshot = get().buildSnapshot();
+      submitQuote: (customer, savedSnapshot) => {
+        const snapshot = savedSnapshot ?? get().buildSnapshot();
         const quote: Quote = {
           id: `Q-${Date.now()}`,
           createdAt: new Date().toISOString(),
