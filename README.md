@@ -44,3 +44,16 @@ npm run build
 ## Demo
 
 Productgegevens en prijzen zijn pending / op aanvraag.
+
+
+## Foto's in de detailingconfigurator
+
+De optie **Foto's** naast 3D en 2D toont nu de bestaande, al geüploade beelden uit
+`public/realisations/` en `public/productfotos/hygiemeca/`.
+Het getoonde beeld wordt automatisch afgestemd op de huidige configuratiestap:
+hogedrukapparatuur, generator, frames of accessoires. De stappen voor frame en extra's
+tonen deze afbeeldingen bovendien direct als fotovoorbeelden.
+
+Dit zijn **voorbeelden van echte installaties en accessoires**, geen gegenereerde
+afbeeldingen van de klant zijn exacte keuzes. De 3D-viewer blijft hiervoor de enige
+live voorstelling. De homepage en de offerte-mailflow zijn niet gewijzigd.
