@@ -9,10 +9,12 @@ import { resolve } from 'node:path';
 
 const dir = resolve(process.argv[2] ?? '.test-build/browser-qa');
 mkdirSync(dir, { recursive: true });
-const url = process.env.QA_URL ?? 'http://127.0.0.1:5278/simulator_auto/?qa=1';
+const url = process.env.QA_URL ?? 'http://127.0.0.1:5278/simulator_auto/';
 const browser = await chromium.launch({
   headless: true,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-webgl'],
+  // Browser CI validates layout, selections and quotes without saturating a software GPU.
+  // Hardware-accelerated 3D must be visually reviewed separately.
+  args: ['--disable-webgl', '--disable-3d-apis'],
 });
 const results = [];
 
