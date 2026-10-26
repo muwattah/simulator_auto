@@ -1,5 +1,5 @@
 import { configurationKey, registerCapture } from '../services/configurationCapture';
-import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
+import { lazy, Suspense, useState, useCallback } from 'react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { getProduct } from '../data/detailingCatalog';
 import type { CameraPreset } from './three/VanScene3D';
@@ -43,7 +43,7 @@ export default function LoadSpaceViewer() {
     registerCapture(captureKey, capture), [captureKey]);
 
   const [mode, setMode] = useState<'3d' | '2d' | 'foto'>('3d');
-  const [webglOk, setWebglOk] = useState(true);
+  const [webglOk] = useState(supportsWebGL);
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('top');
   const [cameraRevision, setCameraRevision] = useState(0);
   const [zoomStep, setZoomStep] = useState(0);
@@ -52,7 +52,6 @@ export default function LoadSpaceViewer() {
   const [vanSettings, setVanSettings] = useState<VanViewSettings>({
     body: 'transparent', roofVisible: false, doorsOpen: true,
   });
-  useEffect(() => { setWebglOk(supportsWebGL()); }, []);
 
   const effectiveMode = mode === 'foto' ? 'foto' : !webglOk ? '2d' : mode;
   const photoGroup: PhotoGroup =
