@@ -6,6 +6,7 @@ import type { CameraPreset } from './three/VanScene3D';
 import type { VanViewSettings } from './three/VanBody3D';
 import { Box, Maximize2, RotateCcw, Trash2, X, AlertTriangle, SlidersHorizontal, CarFront, DoorOpen, ScanEye } from 'lucide-react';
 import VanVisualization from './VanVisualization';
+import DetailingPhotoGallery, { type PhotoGroup } from './DetailingPhotoGallery';
 
 const VanScene3D = lazy(() => import('./three/VanScene3D'));
 
@@ -28,13 +29,14 @@ const CAMERAS: { id: CameraPreset; label: string }[] = [
 
 export default function LoadSpaceViewer() {
   const configuration = useConfiguratorStore((s) => s.configuration);
+  const step = useConfiguratorStore((s) => s.step);
   const space = useConfiguratorStore((s) => s.getCargoSpace());
   const layout = useConfiguratorStore((s) => s.getLayout());
   const selectedProductId = useConfiguratorStore((s) => s.selectedProductId);
   const setSelectedProductId = useConfiguratorStore((s) => s.setSelectedProductId);
   const removeProductById = useConfiguratorStore((s) => s.removeProductById);
 
-  const [mode, setMode] = useState<'3d' | '2d'>('3d');
+  const [mode, setMode] = useState<'3d' | '2d' | 'foto'>('3d');
   const [force2d, setForce2d] = useState(false);
   const [webglOk, setWebglOk] = useState(true);
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('overview');
@@ -50,7 +52,13 @@ export default function LoadSpaceViewer() {
 
   useEffect(() => { setWebglOk(supportsWebGL()); }, []);
 
-  const effectiveMode = !webglOk || force2d ? '2d' : mode;
+  const effectiveMode = mode === 'foto' ? 'foto' : !webglOk || force2d ? '2d' : mode;
+  const photoGroup: PhotoGroup =
+    step === 'pressure' ? 'pressure'
+      : step === 'power' ? 'generator'
+      : step === 'frame' || step === 'lining' ? 'frame'
+      : step === 'extras' ? 'accessories'
+      : step === 'compressor' ? 'reel' : 'van';
   const selected = selectedProductId ? getProduct(selectedProductId) : null;
   const selectedPlacement = layout.placements.find((p) => p.productId === selectedProductId);
   const liningVariant = getProduct(configuration.liningId)?.visual3D.variant ?? 'none';
@@ -70,7 +78,10 @@ export default function LoadSpaceViewer() {
         <div className="flex items-center gap-1.5 flex-wrap">
           <div className="flex rounded-md border border-[var(--border)] overflow-hidden text-xs font-semibold">
             <button type="button" onClick={() => { setMode('3d'); setForce2d(false); }} className={`px-2.5 py-1.5 transition-colors ${effectiveMode === '3d' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>3D</button>
-            <button type="button" onClick={() => setForce2d(true)} className={`px-2.5 py-1.5 transition-colors ${effectiveMode === '2d' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>2D</button>
+            <button type="button" onClick={() => { setMode('2d'); setForce2d(true); }} className={`px-2.5 py-1.5 transition-colors ${effectiveMode === '2d' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>2D</button>
+            <button type="button" onClick={() => setMode('foto')}
+              aria-pressed={effectiveMode === 'foto'}
+              className={`px-2.5 py-1.5 transition-colors ${effectiveMode === 'foto' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'}`}>Foto's</button>
           </div>
           <button type="button" onClick={() => setExpanded((v) => !v)} className="p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--surface)]" title={expanded ? 'Verkleinen' : 'Vergroten'} aria-label={expanded ? 'Verkleinen' : 'Vergroten'}>
             <Maximize2 size={16} />
@@ -137,7 +148,11 @@ export default function LoadSpaceViewer() {
       )}
 
       <div className={`relative ${heightClass} viewer-shell !rounded-none !border-0`}>
-        {effectiveMode === '3d' ? (
+        {effectiveMode === 'foto' ? (
+          <div className="h-full overflow-y-auto p-3 sm:p-4">
+            <DetailingPhotoGallery key={photoGroup} group={photoGroup} />
+          </div>
+        ) : effectiveMode === '3d' ? (
           <Suspense fallback={<div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">3D laden…</div>}>
             <VanScene3D space={space} placements={layout.placements} liningVariant={liningVariant} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} cameraPreset={cameraPreset} vanSettings={vanSettings} />
           </Suspense>
@@ -166,7 +181,19 @@ export default function LoadSpaceViewer() {
           </div>
         )}
       </div>
-      <p className="text-[10px] text-[var(--text-muted)] px-3 py-2 border-t border-[var(--border)]">3D-bestelwagen met indicatieve voertuigafmetingen · Klik op apparatuur voor details · Draaien: slepen · Zoom: scroll/pinch</p>
+      <div className="px-3 py-2 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] text-[var(--text-muted)]">
+          {effectiveMode === 'foto'
+            ? 'Bestaande product- en realisatiefoto’s als inspiratie. De gekozen configuratie blijft in het 3D-tabblad.'
+            : 'Indicatieve 3D-bestelwagen · Klik apparatuur voor details · Slepen: draaien · Scroll: zoom'}
+        </p>
+        {effectiveMode !== 'foto' && (
+          <button type="button" className="text-xs text-[var(--accent)] hover:underline"
+            onClick={() => setMode('foto')}>
+            Bekijk echte foto’s van detailinginstallaties
+          </button>
+        )}
+      </div>
     </div>
   );
 }
