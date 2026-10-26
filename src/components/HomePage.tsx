@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ArrowRight, Box, Check, Droplets, Gauge, Layers, Package, Truck, Wind, Zap, Menu, X, Phone, MessageCircle,
+  ArrowRight, Box, Check, Droplets, Gauge, Layers, Package, Truck, Wind, Zap, Menu, X,
 } from 'lucide-react';
 import { company } from '../config/company';
 
