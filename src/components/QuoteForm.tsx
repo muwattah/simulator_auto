@@ -102,7 +102,7 @@ export default function QuoteForm({ onClose }: Props) {
         email: form.email.trim(),
         phone: form.phone.trim(),
         location: form.location.trim() || undefined,
-        remarks: `Bestelwagen: ${form.vehicleDescription.trim()}${form.remarks.trim() ? '\n' + form.remarks.trim() : ''}`,
+        remarks: form.remarks.trim() || undefined,
       };
 
       const weight = buildSnapshot().estimatedWaterWeightKg;
@@ -129,7 +129,7 @@ export default function QuoteForm({ onClose }: Props) {
         email: form.email.trim(),
         phone: form.phone.trim(),
         postcode: form.location.trim(),
-        remarks: form.remarks.trim() || undefined,
+        remarks: `Bestelwagen: ${form.vehicleDescription.trim()}${form.remarks.trim() ? '\n' + form.remarks.trim() : ''}`,
       };
       submitQuoteStore(legacyCustomer, snapshotFromPayload(finalPayload));
 
