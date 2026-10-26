@@ -1,6 +1,7 @@
-import { useMemo, useEffect, Suspense } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, ContactShadows } from '@react-three/drei';
+import GeneratedVan from './GeneratedVan';
+import { useMemo, useEffect, useRef, Suspense } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { OrbitControls, ContactShadows, Environment, Lightformer, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 import type { CargoSpaceMeters, PlacedItem } from '../../types';
 import { ProductMeshSwitcher } from './DetailModels';
@@ -15,6 +16,8 @@ interface Props {
   selectedProductId: string | null;
   onSelectProduct: (id: string | null) => void;
   cameraPreset: CameraPreset;
+  cameraRevision?: number;
+  zoomStep?: number;
   /** Studio presentation is an open equipment platform, not an exact van model. */
   presentationMode?: boolean;
   vanSettings?: VanViewSettings;
@@ -149,22 +152,22 @@ function CargoShell({
   );
 }
 
-function CameraController({ preset, space, presentationMode }: {
-  preset: CameraPreset; space: CargoSpaceMeters; presentationMode: boolean;
+function CameraController({ preset, space, presentationMode, revision = 0 }: {
+  preset: CameraPreset; space: CargoSpaceMeters; presentationMode: boolean; revision?: number;
 }) {
   const camera = useThree(s => s.camera);
   const controls = useThree(s => s.controls) as { target: THREE.Vector3; update: () => void } | null;
   const { length: L, width: W, height: H } = space;
   useEffect(() => {
     const targets: Record<CameraPreset, { pos: [number, number, number]; look: [number, number, number] }> = {
-      rear: { pos: [0, H * 0.89, -L * 1.6], look: [0, H * 0.43, -L * 0.03] },
+      rear: { pos: [0, H * 0.7, -L * 1.4], look: [0, H * 0.34, -L * 0.25] },
       overview: {
-        pos: [W * (presentationMode ? 2.20 : 1.93), H * 1.53, -L * 1.37],
-        look: [0, H * 0.40, L * 0.16],
+        pos: [W * (presentationMode ? 2.5 : 2.4), H * 1.45, -L * 1.5],
+        look: [0, H * 0.22, L * 0.30],
       },
-      left: { pos: [-W * 1.65, H * 0.92, -L * 0.38], look: [0, H * 0.40, 0] },
-      right: { pos: [W * 1.65, H * 0.92, -L * 0.38], look: [0, H * 0.40, 0] },
-      top: { pos: [0.001, H * 2.7, 0], look: [0, 0, 0] },
+      left: { pos: [-W * 3.8, H * 1.0, L * 0.28], look: [0, H * 0.40, L * 0.28] },
+      right: { pos: [W * 3.8, H * 1.0, L * 0.28], look: [0, H * 0.40, L * 0.28] },
+      top: { pos: [0.001, L * 2.8, L * 0.28], look: [0, 0, L * 0.28] },
     };
     const next = targets[preset];
     camera.position.set(...next.pos);
@@ -172,7 +175,23 @@ function CameraController({ preset, space, presentationMode }: {
       controls.target.set(...next.look);
       controls.update();
     } else camera.lookAt(...next.look);
-  }, [preset, L, W, H, camera, controls, presentationMode]);
+  }, [preset, L, W, H, camera, controls, presentationMode, revision]);
+  return null;
+}
+
+function ZoomController({ step = 0 }: { step?: number }) {
+  const { camera, invalidate } = useThree();
+  const controls = useThree(s => s.controls) as { target: THREE.Vector3; update: () => void } | null;
+  const previous = useRef(step);
+  useEffect(() => {
+    const delta = step - previous.current;
+    previous.current = step;
+    if (!controls || !delta) return;
+    const offset = camera.position.clone().sub(controls.target);
+    const distance = THREE.MathUtils.clamp(offset.length() * Math.pow(0.82, delta), 1.2, 24);
+    camera.position.copy(controls.target).add(offset.setLength(distance));
+    controls.update(); invalidate();
+  }, [step, camera, controls, invalidate]);
   return null;
 }
 
@@ -183,8 +202,9 @@ function CaptureBridge({ onCaptureReady }: {
   useEffect(() => {
     const capture = (): string | null => {
       try {
+        if (useProgress.getState().active || useProgress.getState().errors.length) return null;
         gl.render(scene, camera);
-        const image = gl.domElement.toDataURL('image/jpeg', 0.78);
+        const image = gl.domElement.toDataURL('image/jpeg', 0.92);
         return image.startsWith('data:image/jpeg;base64,') ? image : null;
       } catch {
         return null;
@@ -196,34 +216,72 @@ function CaptureBridge({ onCaptureReady }: {
   return null;
 }
 
+function RendererMetrics() {
+  const { gl, camera, invalidate } = useThree();
+  const controls = useThree(s => s.controls) as { autoRotate: boolean; update: () => void } | null;
+  const enabled = import.meta.env.DEV && new URLSearchParams(location.search).has('qa');
+  useEffect(() => {
+    if (!enabled || !controls) return;
+    const start = () => {
+      const target = window as unknown as { __rs3d?: { frames: number[] } };
+      if (target.__rs3d) target.__rs3d.frames = [];
+      controls.autoRotate = true; controls.update(); invalidate();
+    };
+    const stop = () => { controls.autoRotate = false; };
+    window.addEventListener('rs-profile-start', start);
+    window.addEventListener('rs-profile-stop', stop);
+    return () => { window.removeEventListener('rs-profile-start', start); window.removeEventListener('rs-profile-stop', stop); };
+  }, [enabled, controls, invalidate]);
+  useFrame((_, delta) => {
+    if (!enabled) return;
+    const target = window as unknown as { __rs3d?: { frames: number[]; calls: number; triangles: number; camera: number[]; programs: number } };
+    target.__rs3d ??= { frames: [], calls: 0, triangles: 0, camera: [], programs: 0 };
+    const m = target.__rs3d;
+    m.frames.push(delta * 1000);
+    if (m.frames.length > 1800) m.frames.shift();
+    m.calls = gl.info.render.calls;
+    m.triangles = gl.info.render.triangles;
+    m.programs = gl.info.programs?.length ?? 0;
+    m.camera = camera.position.toArray();
+  });
+  return null;
+}
+
 function SceneContent(props: Props) {
+  const loading = useProgress(s => s.active);
   const {
     space, placements, liningVariant, selectedProductId, onSelectProduct,
     cameraPreset, presentationMode = false, onCaptureReady, vanSettings,
   } = props;
   return (
     <>
+      <RendererMetrics />
       <color attach="background" args={[presentationMode ? '#242b33' : '#151c26']} />
+      <Environment resolution={128} frames={1}>
+        <Lightformer intensity={3} position={[0, 6, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[8, 4, 1]} />
+        <Lightformer intensity={2} position={[-5, 2, 0]} rotation={[0, Math.PI / 2, 0]} scale={[6, 3, 1]} />
+        <Lightformer intensity={2} position={[4, 3, -4]} rotation={[0, -Math.PI / 4, 0]} scale={[3, 5, 1]} />
+      </Environment>
       <hemisphereLight intensity={1.35} color="#e6f2ff" groundColor="#344350" />
       <ambientLight intensity={0.65} />
       <directionalLight position={[3.5, 7, -5]} intensity={2.3} castShadow
-        shadow-mapSize-width={2048} shadow-mapSize-height={2048}
+        shadow-mapSize-width={1024} shadow-mapSize-height={1024}
         shadow-bias={-0.0002} />
       <directionalLight position={[-5, 3.5, 2.5]} color="#a6d8ff" intensity={1.0} />
       <directionalLight position={[0, 4.2, 6]} color="#ffebd5" intensity={1.2} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.195, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.64, 0]} receiveShadow>
         <planeGeometry args={[80, 80]} />
         <meshStandardMaterial color="#222932" roughness={0.74} metalness={0.04} />
       </mesh>
       <CargoShell space={space} liningVariant={liningVariant} presentationMode={presentationMode} />
-      <VanBody3D
+      {space.vehicleCategory === 'trailer' ? <VanBody3D
         space={space}
         settings={vanSettings ?? {
           body: 'transparent',
           roofVisible: true,
           doorsOpen: true,
         }}
-      />
+      /> : <Suspense fallback={null}><GeneratedVan space={space} settings={vanSettings ?? { body: 'transparent', roofVisible: true, doorsOpen: true }} /></Suspense>}
       {placements.map(item => (
         <ProductMeshSwitcher
           key={item.productId}
@@ -232,11 +290,12 @@ function SceneContent(props: Props) {
           onSelect={() => onSelectProduct(selectedProductId === item.productId ? null : item.productId)}
         />
       ))}
-      <ContactShadows position={[0, -0.18, 0]} opacity={0.42} scale={12} blur={2.3} far={4} />
+      <ContactShadows key={placements.map(i => i.productId).join() + loading} frames={1} position={[0, -0.63, 0]} opacity={0.42} scale={12} blur={2.3} far={4} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.08}
         minDistance={1.2} maxDistance={24} maxPolarAngle={Math.PI * 0.49}
-        target={[0, space.height * 0.35, -space.length * 0.1]} />
-      <CameraController preset={cameraPreset} space={space} presentationMode={presentationMode} />
+        />
+      <CameraController preset={cameraPreset} space={space} presentationMode={presentationMode} revision={props.cameraRevision} />
+      <ZoomController step={props.zoomStep} />
       {onCaptureReady && <CaptureBridge onCaptureReady={onCaptureReady} />}
     </>
   );
@@ -244,7 +303,7 @@ function SceneContent(props: Props) {
 
 export default function VanScene3D(props: Props) {
   return (
-    <Canvas shadows dpr={[1.25, 2]}
+    <Canvas shadows frameloop="demand" dpr={[1, 1.5]}
       camera={{ position: [0, 1.7, -4], fov: 42, near: 0.1, far: 80 }}
       gl={{ antialias: true, preserveDrawingBuffer: Boolean(props.onCaptureReady), powerPreference: 'high-performance' }}
       onPointerMissed={() => props.onSelectProduct(null)}

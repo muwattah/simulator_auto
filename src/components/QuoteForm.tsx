@@ -1,9 +1,11 @@
+import { captureConfiguration } from '../services/configurationCapture';
 import { useState, useCallback, useMemo } from 'react';
 import { Check, Copy, MessageCircle, Phone, AlertCircle, FileText } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { company } from '../config/company';
 import {
   generateConfigurationId,
+  snapshotFromPayload,
   buildQuotePayload,
   formatQuoteSummary,
   submitQuoteRequest,
@@ -107,6 +109,7 @@ export default function QuoteForm({ onClose }: Props) {
         createdAt,
         customer: customerPayload,
         configuration,
+        previewImageDataUrl: captureConfiguration(configuration),
         pricing,
         estimatedWaterWeightKg: weight,
         layoutWarnings: layout.warnings,
@@ -125,7 +128,7 @@ export default function QuoteForm({ onClose }: Props) {
         postcode: form.location.trim(),
         remarks: form.remarks.trim() || undefined,
       };
-      submitQuoteStore(legacyCustomer);
+      submitQuoteStore(legacyCustomer, snapshotFromPayload(finalPayload));
 
       setResult({
         payload: finalPayload,
@@ -157,7 +160,7 @@ export default function QuoteForm({ onClose }: Props) {
               <Check size={20} className="text-[var(--accent)]" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg text-[var(--text-primary)]">Aanvraag vastgelegd</h3>
+              <h3 className="font-semibold text-lg text-[var(--text-primary)]">Configuratie voorbereid</h3>
               <p className="mt-1 text-sm text-[var(--text-secondary)] leading-relaxed">{result.message}</p>
               <p className="mt-3 text-sm">
                 <span className="text-[var(--text-muted)]">Referentie: </span>
@@ -167,6 +170,11 @@ export default function QuoteForm({ onClose }: Props) {
           </div>
         </div>
 
+        {result.payload.previewImageDataUrl ? <div className="card p-4 space-y-3">
+          <img src={result.payload.previewImageDataUrl} alt="3D-weergave van uw gekozen configuratie" className="rounded-lg w-full" />
+          <a className="btn-secondary" href={result.payload.previewImageDataUrl} download={`${result.payload.configurationId}.jpg`}>Afbeelding bewaren</a>
+        </div> : <p className="text-sm text-[var(--warning)]">Geen 3D-afbeelding beschikbaar. Open de 3D-weergave om je configuratie te bekijken.</p>}
+        <a className="btn-secondary" href={`data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(result.payload, null, 2))}`} download={`${result.payload.configurationId}.json`}>Volledige aanvraag bewaren</a>
         <div className="card p-5">
           <div className="flex items-center justify-between gap-3 mb-3">
             <h4 className="font-semibold flex items-center gap-2">
@@ -216,7 +224,7 @@ export default function QuoteForm({ onClose }: Props) {
       <div>
         <h3 className="text-lg font-semibold text-[var(--text-primary)]">Offerteaanvraag</h3>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Vul uw gegevens in. Uw configuratie ({vehicleLabel}) wordt meegestuurd met een unieke referentie.
+          Vul uw gegevens in. Uw configuratie ({vehicleLabel()}) wordt meegestuurd met een unieke referentie.
         </p>
       </div>
 

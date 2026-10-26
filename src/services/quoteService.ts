@@ -47,12 +47,18 @@ export interface QuotePayload {
   configurationId: string;
   createdAt: string;
   source: 'web-configurator';
+  reviewStatus: 'awaiting-admin-review';
+  previewImageDataUrl: string | null;
   company: {
     name: string;
     website: string;
   };
   customer: QuoteCustomer;
   vehicle: {
+    modelId?: string | null;
+    lengthVariant?: string;
+    roofVariant?: string;
+    availablePayloadKg?: number | null;
     categoryId: string | null;
     categoryName: string | null;
     cabType: string | null;
@@ -109,6 +115,7 @@ export function buildQuotePayload(params: {
   createdAt: string;
   customer: QuoteCustomer;
   configuration: DetailingConfiguration;
+  previewImageDataUrl?: string | null;
   pricing: PricingResult;
   estimatedWaterWeightKg: number;
   layoutWarnings: string[];
@@ -125,12 +132,18 @@ export function buildQuotePayload(params: {
     configurationId: params.configurationId,
     createdAt: params.createdAt,
     source: 'web-configurator',
+    reviewStatus: 'awaiting-admin-review',
+    previewImageDataUrl: params.previewImageDataUrl ?? null,
     company: {
       name: company.name,
       website: company.website,
     },
     customer: params.customer,
     vehicle: {
+      modelId: c.vehicleModelId,
+      lengthVariant: c.vehicleLength,
+      roofVariant: c.vehicleRoof,
+      availablePayloadKg: c.availablePayloadKg,
       categoryId: c.vehicleCategory,
       categoryName: cat?.name ?? null,
       cabType: c.cabType,
@@ -196,6 +209,8 @@ export function formatQuoteSummary(payload: QuotePayload): string {
   lines.push('Voertuig:');
   lines.push(`- Type: ${payload.vehicle.categoryName ?? '—'}`);
   lines.push(`- Cabine: ${payload.vehicle.cabType ?? '—'}`);
+  lines.push(`- Model: ${payload.vehicle.modelId ?? '—'} · ${payload.vehicle.lengthVariant ?? 'standard'} · ${payload.vehicle.roofVariant ?? 'standard'}`);
+  lines.push('- Status: wacht op beoordeling beheerder; geen definitieve offerte.');
   lines.push('');
   lines.push('Water:');
   lines.push(`- Tank: ${payload.systems.tankName ?? '—'}`);
@@ -268,10 +283,11 @@ export async function submitQuoteRequest(payload: QuotePayload): Promise<SubmitQ
   try {
     const key = 'rs-quote-requests';
     const existing = JSON.parse(localStorage.getItem(key) || '[]') as QuotePayload[];
-    existing.unshift(payload);
+    // Keep large images in the downloadable request, not in limited localStorage.
+    existing.unshift({ ...payload, previewImageDataUrl: null });
     localStorage.setItem(key, JSON.stringify(existing.slice(0, 20)));
   } catch {
-    // ignore storage errors
+    return { ok: false, error: 'Lokale opslag is niet beschikbaar. Bewaar de volledige aanvraag via de download; er is geen e-mail verzonden.' };
   }
 
   return {
@@ -291,6 +307,9 @@ export function snapshotFromPayload(payload: QuotePayload): ConfigurationSnapsho
     createdAt: payload.createdAt,
     vehicleCategory: payload.vehicle.categoryId as ConfigurationSnapshot['vehicleCategory'],
     cabType: payload.vehicle.cabType as ConfigurationSnapshot['cabType'],
+    vehicleModelId: payload.vehicle.modelId,
+    vehicleLength: payload.vehicle.lengthVariant as ConfigurationSnapshot['vehicleLength'],
+    vehicleRoof: payload.vehicle.roofVariant as ConfigurationSnapshot['vehicleRoof'],
     tank: payload.systems.tankId,
     floatValve: payload.systems.floatValve,
     pressureWasher: payload.systems.pressureWasherId,

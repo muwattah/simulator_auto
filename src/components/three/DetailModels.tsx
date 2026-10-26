@@ -1,13 +1,12 @@
+import GeneratedEquipment, { generatedModelFor } from './GeneratedEquipment';
+import { RoundedBox } from '@react-three/drei';
 import { useMemo, useRef, type ReactNode } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { PlacedItem } from '../../types';
 import { getProduct } from '../../data/detailingCatalog';
 
-const metal = '#6b7280';
-const darkMetal = '#374151';
 const blueAccent = '#2563eb';
-const tankBlue = '#1e3a5f';
 
 function useHighlightMat(selected: boolean, base: string, metalness = 0.4, roughness = 0.45) {
   return useMemo(
@@ -37,9 +36,8 @@ export function TankMesh({ item, selected, onSelect }: { item: PlacedItem; selec
   const brass = useMemo(() => new THREE.MeshStandardMaterial({ color: '#c6a15b', metalness: 0.85, roughness: 0.28 }), []);
   return (
     <group position={item.position} onPointerDown={(e) => pick(e, onSelect)}>
-      <mesh castShadow receiveShadow material={body}>
-        <boxGeometry args={[w * 0.92, h * 0.88, d * 0.91]} />
-      </mesh>
+      <RoundedBox args={[w * 0.96, h * 0.94, d * 0.96]} radius={0.045} smoothness={3} castShadow receiveShadow material={body} />
+      {[-0.28, 0, 0.28].map(x => <RoundedBox key={x} position={[x * w, 0, 0]} args={[w * 0.045, h * 0.965, d * 0.975]} radius={0.012} smoothness={2} material={body} />)}
       <mesh position={[0, h * 0.46, -d * 0.27]} material={cap} castShadow>
         <cylinderGeometry args={[0.085, 0.085, 0.043, 18]} />
       </mesh>
@@ -269,60 +267,18 @@ export function PressureWasherMesh({ item, selected, onSelect }: { item: PlacedI
 
 /** Powder-coated steel rack with a metallic tread-plate back and storage shelf. */
 export function FrameMesh({ item, selected, onSelect }: { item: PlacedItem; selected: boolean; onSelect: () => void }) {
-  const prod = getProduct(item.productId);
-  const variant = prod?.visual3D.variant ?? 'basic';
   const [w, h, d] = item.size;
-  const steel = useHighlightMat(selected, '#171d23', 0.76, 0.34);
-  const panel = useMemo(() => new THREE.MeshStandardMaterial({ color: '#9ca8b3', metalness: 0.66, roughness: 0.33 }), []);
-  const shelf = useMemo(() => new THREE.MeshStandardMaterial({ color: '#394652', metalness: 0.6, roughness: 0.4 }), []);
-  const hasShelf = ['full', 'standard'].includes(variant);
-  const hasStorage = ['full', 'tank_storage', 'toolbox'].includes(variant);
-  const hasToolbox = variant === 'toolbox';
-  return (
-    <group position={item.position} onPointerDown={(e) => pick(e, onSelect)}>
-      <mesh position={[0, 0, d * 0.35]} material={panel} castShadow>
-        <boxGeometry args={[w * 0.90, h * 0.93, 0.025]} />
-      </mesh>
-      {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
-        <mesh key={'tread-' + i} position={[0, -h * 0.4 + i * h * 0.11, d * 0.35 + 0.021]} rotation={[0, 0, Math.PI / 4]}>
-          <boxGeometry args={[w * 0.73, 0.008, 0.007]} />
-          <meshStandardMaterial color="#d3dae1" metalness={0.78} roughness={0.26} />
-        </mesh>
-      ))}
-      {[-1, 1].map(side => (
-        <group key={'side-' + side}>
-          <mesh position={[side * w * 0.48, 0, 0]} material={steel} castShadow>
-            <boxGeometry args={[0.052, h * 1.07, d * 1.12]} />
-          </mesh>
-          <mesh position={[side * w * 0.48, h * 0.52, 0]} material={steel}>
-            <boxGeometry args={[0.06, 0.056, d * 1.17]} />
-          </mesh>
-        </group>
-      ))}
-      {[-0.48, 0.50].map((y, i) => (
-        <mesh key={i} position={[0, y * h, 0]} material={steel} castShadow>
-          <boxGeometry args={[w * 1.04, 0.06, d * 1.13]} />
-        </mesh>
-      ))}
-      {hasShelf && (
-        <mesh position={[0, -h * 0.18, -d * 0.12]} material={shelf} receiveShadow castShadow>
-          <boxGeometry args={[w * 0.86, 0.035, d * 0.8]} />
-        </mesh>
-      )}
-      {hasStorage && (
-        <mesh position={[w * 0.27, -h * 0.25, 0.02]} material={shelf} castShadow>
-          <boxGeometry args={[w * 0.3, h * 0.31, d * 0.38]} />
-        </mesh>
-      )}
-      {hasToolbox && (
-        <mesh position={[-w * 0.28, -h * 0.26, 0.02]} castShadow>
-          <boxGeometry args={[w * 0.28, h * 0.26, d * 0.4]} />
-          <meshStandardMaterial color="#d5a145" roughness={0.43} metalness={0.3} />
-        </mesh>
-      )}
-      {selected && <mesh><boxGeometry args={[w * 1.10, h * 1.12, d * 1.25]} /><meshBasicMaterial color="#38bdf8" wireframe transparent opacity={0.40} /></mesh>}
-    </group>
-  );
+  const steel = useHighlightMat(selected, '#343f47', 0.82, 0.3);
+  const beam = 0.035;
+  return <group position={item.position} onPointerDown={e => pick(e, onSelect)}>
+    {[-1, 1].flatMap(x => [-1, 1].map(z => <group key={`${x}-${z}`} position={[x * (w - beam) / 2, 0, z * (d - beam) / 2]}>
+      <RoundedBox args={[beam, h, beam]} radius={0.004} smoothness={2} material={steel} castShadow />
+      <mesh position={[0, -h / 2 + 0.01, 0]}><boxGeometry args={[0.09, 0.02, 0.09]} /><meshStandardMaterial color="#151b20" metalness={0.7} roughness={0.45} /></mesh>
+      <mesh position={[0, h / 2 - 0.045, -z * 0.022]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.009, 0.009, 0.015, 6]} /><meshStandardMaterial color="#becbd0" metalness={0.9} roughness={0.2} /></mesh>
+    </group>))}
+    {[-0.48, 0.1, 0.48].flatMap(y => [-1, 1].map(z => <RoundedBox key={`${y}-${z}`} args={[w, beam, beam]} radius={0.004} smoothness={2} position={[0, y * h, z * (d - beam) / 2]} material={steel} castShadow />))}
+    {[-1, 1].flatMap(x => [-0.48, 0.48].map(y => <RoundedBox key={`${x}-${y}`} args={[beam, beam, d]} radius={0.004} smoothness={2} position={[x * (w - beam) / 2, y * h, 0]} material={steel} castShadow />))}
+  </group>;
 }
 
 export function BottleHolderMesh({ item, selected, onSelect }: { item: PlacedItem; selected: boolean; onSelect: () => void }) {
@@ -408,6 +364,7 @@ export function ProductMeshSwitcher({
 }) {
   const prod = getProduct(item.productId);
   if (!prod) return null;
+  if (generatedModelFor(item.productId)) return <GeneratedEquipment item={item} selected={selected} onSelect={onSelect} />;
   const type = prod.visual3D.type;
   const props = { item, selected, onSelect };
   let mesh: ReactNode = null;

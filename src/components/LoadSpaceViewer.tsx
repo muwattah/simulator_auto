@@ -1,10 +1,11 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { configurationKey, registerCapture } from '../services/configurationCapture';
+import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { getProduct } from '../data/detailingCatalog';
 import { formatPriceOrPending } from '../lib/pricing';
 import type { CameraPreset } from './three/VanScene3D';
 import type { VanViewSettings } from './three/VanBody3D';
-import { Box, Maximize2, RotateCcw, Trash2, X, AlertTriangle, SlidersHorizontal, CarFront, DoorOpen, ScanEye } from 'lucide-react';
+import { Box, Maximize2, RotateCcw, Trash2, X, AlertTriangle, SlidersHorizontal, CarFront, DoorOpen, ScanEye, ZoomIn, ZoomOut } from 'lucide-react';
 import VanVisualization from './VanVisualization';
 import DetailingPhotoGallery, { type PhotoGroup } from './DetailingPhotoGallery';
 
@@ -29,6 +30,8 @@ const CAMERAS: { id: CameraPreset; label: string }[] = [
 
 export default function LoadSpaceViewer() {
   const configuration = useConfiguratorStore((s) => s.configuration);
+  const captureKey = configurationKey(configuration);
+  const onCaptureReady = useCallback((capture: (() => string | null) | null) => registerCapture(captureKey, capture), [captureKey]);
   const step = useConfiguratorStore((s) => s.step);
   const space = useConfiguratorStore((s) => s.getCargoSpace());
   const layout = useConfiguratorStore((s) => s.getLayout());
@@ -40,7 +43,10 @@ export default function LoadSpaceViewer() {
   const [force2d, setForce2d] = useState(false);
   const [webglOk, setWebglOk] = useState(true);
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('overview');
-  const [settingsOpen, setSettingsOpen] = useState(true);
+  const [cameraRevision, setCameraRevision] = useState(0);
+  const [zoomStep, setZoomStep] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  const [warningsExpanded, setWarningsExpanded] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
   const [vanSettings, setVanSettings] = useState<VanViewSettings>({
     body: 'transparent',
     roofVisible: true,
@@ -65,12 +71,12 @@ export default function LoadSpaceViewer() {
   const heightClass = expanded ? 'h-[77vh] min-h-[460px]' : 'h-[330px] sm:h-[440px] lg:h-[600px] 2xl:h-[680px]';
 
   return (
-    <div className="card overflow-hidden">
+    <div className="card overflow-hidden detailing-viewer">
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 border-b border-[var(--border)] bg-[var(--surface-elevated)]">
         <div className="flex items-center gap-2 min-w-0">
           <Box size={15} className="text-[var(--accent)] shrink-0" />
           <div className="min-w-0">
-            <h3 className="font-semibold text-sm text-[var(--text-primary)] leading-tight">3D View</h3>
+            <h3 className="font-semibold text-sm text-[var(--text-primary)] leading-tight">Installatie in beeld</h3>
             <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Live configuratie</p>
           </div>
           <span className="hidden sm:inline text-[10px] uppercase tracking-wide text-[var(--warning)] bg-[var(--warning)]/10 border border-[var(--warning)]/30 px-1.5 py-0.5 rounded">Demo</span>
@@ -92,9 +98,11 @@ export default function LoadSpaceViewer() {
       {effectiveMode === '3d' && (
         <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
           {CAMERAS.map((cam) => (
-            <button key={cam.id} type="button" onClick={() => setCameraPreset(cam.id)} className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors ${cameraPreset === cam.id ? 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-muted)]' : 'text-[var(--text-muted)] border border-transparent'}`}>{cam.label}</button>
+            <button key={cam.id} type="button" onClick={() => { setCameraPreset(cam.id); setCameraRevision(v => v + 1); }} className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors ${cameraPreset === cam.id ? 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-muted)]' : 'text-[var(--text-muted)] border border-transparent'}`}>{cam.label}</button>
           ))}
-          <button type="button" onClick={() => setCameraPreset('overview')} className="ml-auto p-1 text-[var(--text-muted)]" title="Reset camera" aria-label="Reset camera"><RotateCcw size={14} /></button>
+          <button type="button" aria-label="Inzoomen" onClick={() => setZoomStep(v => v + 1)}><ZoomIn size={17} /></button>
+          <button type="button" aria-label="Uitzoomen" onClick={() => setZoomStep(v => v - 1)}><ZoomOut size={17} /></button>
+          <button type="button" onClick={() => { setCameraPreset('overview'); setCameraRevision(v => v + 1); }} className="ml-auto p-1 text-[var(--text-muted)]" title="Reset camera" aria-label="Reset camera"><RotateCcw size={14} /></button>
           <button type="button" onClick={() => setSettingsOpen(open => !open)}
             className={`inline-flex gap-1 items-center px-2.5 py-1 rounded-md text-[11px] border font-semibold ${settingsOpen ? 'bg-[var(--accent-soft)] border-[var(--accent-muted)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}
             aria-expanded={settingsOpen} aria-controls="van-display-settings">
@@ -131,20 +139,17 @@ export default function LoadSpaceViewer() {
           <button type="button" onClick={() => updateVanSettings({ roofVisible: !vanSettings.roofVisible })}
             aria-pressed={vanSettings.roofVisible}
             className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-md px-2.5 py-1.5 border ${!vanSettings.roofVisible ? 'border-[var(--accent-muted)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border)]'}`}>
-            <ScanEye size={14} /> Dak {vanSettings.roofVisible ? 'tonen' : 'verbergen'}
+            <ScanEye size={14} /> Dak {vanSettings.roofVisible ? 'verbergen' : 'tonen'}
           </button>
           <span className="text-[10px] text-[var(--text-muted)]">Generieke 3D-bestelwagen · afmetingen indicatief</span>
         </div>
       )}
 
       {layout.warnings.length > 0 && (
-        <div className="mx-3 mt-3 rounded-lg border border-[var(--warning)]/35 bg-[var(--warning)]/10 px-3 py-2 flex gap-2 text-xs text-[var(--warning)]">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold mb-0.5">Ruimtecontrole</p>
-            {layout.warnings.map((w, i) => <p key={i}>{w}</p>)}
-          </div>
-        </div>
+        <details open={warningsExpanded} onToggle={e => setWarningsExpanded(e.currentTarget.open)} className="mx-3 mt-3 rounded-lg border border-[var(--warning)]/35 bg-[var(--warning)]/10 px-3 text-xs text-[var(--warning)]">
+          <summary className="min-h-[44px] flex items-center gap-2 cursor-pointer font-semibold"><AlertTriangle size={14} /> Controle en aandachtspunten ({layout.warnings.length})</summary>
+          <div className="pb-3 space-y-1">{layout.warnings.map((w, i) => <p key={i}>{w}</p>)}</div>
+        </details>
       )}
 
       <div className={`relative ${heightClass} viewer-shell !rounded-none !border-0`}>
@@ -154,7 +159,7 @@ export default function LoadSpaceViewer() {
           </div>
         ) : effectiveMode === '3d' ? (
           <Suspense fallback={<div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">3D laden…</div>}>
-            <VanScene3D space={space} placements={layout.placements} liningVariant={liningVariant} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} cameraPreset={cameraPreset} vanSettings={vanSettings} />
+            <VanScene3D space={space} placements={layout.placements} liningVariant={liningVariant} selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId} cameraPreset={cameraPreset} cameraRevision={cameraRevision} zoomStep={zoomStep} vanSettings={vanSettings} onCaptureReady={onCaptureReady} />
           </Suspense>
         ) : (
           <div className="p-3 h-full overflow-auto bg-[var(--bg-secondary)]">

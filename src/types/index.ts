@@ -136,6 +136,8 @@ export interface DetailingConfiguration {
   vehicleModelId?: string | null;
   vehicleLength?: VehicleLength;
   vehicleRoof?: VehicleRoof;
+  /** Remaining payload after occupants and existing equipment, entered by customer. */
+  availablePayloadKg?: number | null;
   tankId: string | null;
   floatValve: boolean | null;
   pressureWasherId: string | null;

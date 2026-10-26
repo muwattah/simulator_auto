@@ -125,45 +125,48 @@ export default function HomePage({ onStart }: Props) {
         )}
       </header>
 
-      <section className="relative min-h-[88vh] md:min-h-[92vh] flex items-center pt-20 pb-16 overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_70%_40%,rgba(14,165,233,0.07),transparent_55%)]" />
-          <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-[var(--bg-primary)] to-transparent" />
-        </div>
-        <div className="container-content relative grid lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-          <div className="lg:col-span-6 space-y-7">
-            <p className="eyebrow">{company.tagline}</p>
-            <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold tracking-tight leading-[1.08]">Bouw jouw professionele<br className="hidden sm:block" /> mobiele werkplaats.</h1>
-            <p className="text-base sm:text-lg text-[var(--text-secondary)] max-w-xl leading-relaxed">
-              Stel stap voor stap jouw mobiele werkplek samen. Kies je watertank, haspels, compressor, stroomvoorziening en inrichting en bekijk je configuratie direct in 3D.
+      <section className="relative isolate min-h-[90svh] md:min-h-[92svh] flex items-end md:items-center overflow-hidden bg-[#07111b]" aria-labelledby="hero-title">
+        <img
+          src={`${import.meta.env.BASE_URL}images/fotorscar.avif`}
+          alt="Geopende RS Car Detailing werkbus met gemonteerde slanghaspels en professionele reinigingsapparatuur"
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover object-[center_42%] md:object-[center_46%]"
+          onError={e => {
+            const img = e.currentTarget;
+            if (!img.src.includes('realisations/interior-01.jpg')) img.src = `${import.meta.env.BASE_URL}realisations/interior-01.jpg`;
+          }}
+        />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(90deg, rgba(4,12,21,.92) 0%, rgba(4,12,21,.77) 36%, rgba(4,12,21,.28) 74%, rgba(4,12,21,.15) 100%)' }} />
+        <div className="absolute inset-0 md:hidden pointer-events-none" style={{ background: 'linear-gradient(0deg, rgba(3,10,19,.96) 0%, rgba(3,10,19,.77) 34%, rgba(3,10,19,.09) 78%)' }} />
+        <div className="absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-[var(--bg-primary)] to-transparent pointer-events-none" />
+        <div className="container-content relative z-10 w-full pt-32 pb-20 sm:pb-24 md:py-36">
+          <div className="max-w-[680px]">
+            <p className="mb-5 flex items-center gap-3 text-[11px] sm:text-xs font-bold tracking-[.2em] uppercase text-sky-200">
+              <span className="h-[2px] w-9 bg-sky-400" /> RS Car Detailing · Werkbusinrichting op maat
             </p>
-            <div className="flex flex-wrap gap-3 pt-1">
-              <button type="button" onClick={onStart} className="btn-primary btn-lg">Start configureren <ArrowRight size={18} /></button>
-              <button type="button" onClick={() => scrollTo('realisaties')} className="btn-secondary btn-lg">Bekijk realisaties</button>
+            <h1 id="hero-title" className="text-white text-[clamp(2.7rem,6vw,5.4rem)] font-extrabold tracking-tight leading-[1.02] drop-shadow-lg">
+              Jouw werkbus.<br />Jouw ideale installatie.
+            </h1>
+            <p className="mt-6 max-w-[550px] text-base sm:text-lg md:text-xl leading-relaxed text-white/90">
+              Van watertank tot slanghaspel: ontdek hoe jouw mobiele detailingwerkplaats eruit kan zien. Stel alles zelf samen en bekijk het direct in 3D.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button type="button" onClick={onStart} className="btn-primary btn-lg shadow-xl shadow-black/30">
+                Start jouw configuratie <ArrowRight size={19} />
+              </button>
+              <button type="button" onClick={() => scrollTo('realisaties')} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/50 bg-black/30 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15">
+                Bekijk realisaties
+              </button>
             </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-sm text-[var(--text-muted)]">
-              {['3D configuratie', 'Modulaire inrichting', 'Direct overzicht'].map((t) => (
-                <span key={t} className="inline-flex items-center gap-1.5"><Check size={14} className="text-[var(--accent)]" />{t}</span>
+            <div className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-xs sm:text-sm font-medium text-white/85">
+              {['Echte werkbusinrichtingen', 'Alles op maat', 'Interactief in 3D'].map(t => (
+                <span key={t} className="inline-flex items-center gap-2"><Check size={15} className="text-sky-300" />{t}</span>
               ))}
             </div>
           </div>
-          <div className="lg:col-span-6 relative">
-            <div className="viewer-shell aspect-[4/3] md:aspect-[16/11] relative flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center justify-center p-6 md:p-10"><HeroInstallPreview /></div>
-              <div className="absolute top-4 left-4 md:top-6 md:left-6 space-y-2 pointer-events-none">
-                {['250 L WATER', '25 M HIGH PRESSURE'].map((l) => (
-                  <div key={l} className="flex items-center gap-2"><span className="w-6 h-px bg-[var(--accent)]/70" /><span className="text-[10px] font-semibold tracking-wider text-[var(--text-muted)]">{l}</span></div>
-                ))}
-              </div>
-              <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 space-y-2 text-right pointer-events-none">
-                {['AIR SYSTEM', 'POWER SYSTEM'].map((l) => (
-                  <div key={l} className="flex items-center justify-end gap-2"><span className="text-[10px] font-semibold tracking-wider text-[var(--text-muted)]">{l}</span><span className="w-6 h-px bg-[var(--accent)]/70" /></div>
-                ))}
-              </div>
-            </div>
-            <p className="mt-3 text-center text-xs text-[var(--text-muted)]">Voorbeeldinstallatie · live configureerbaar in de 3D configurator</p>
-          </div>
         </div>
+        <div className="absolute right-5 bottom-6 hidden md:block text-xs tracking-widest uppercase text-white/70">RS Car Detailing · Realisatie</div>
       </section>
 
       <section id="hoe-het-werkt" className="section border-t border-[var(--border)]">
