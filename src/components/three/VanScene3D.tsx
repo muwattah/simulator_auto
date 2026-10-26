@@ -162,8 +162,8 @@ function CameraController({ preset, space, presentationMode, revision = 0 }: {
     const targets: Record<CameraPreset, { pos: [number, number, number]; look: [number, number, number] }> = {
       rear: { pos: [0, H * 0.7, -L * 1.4], look: [0, H * 0.34, -L * 0.25] },
       overview: {
-        pos: [W * (presentationMode ? 2.5 : 2.4), H * 1.45, -L * 1.5],
-        look: [0, H * 0.22, L * 0.30],
+        pos: [W * (presentationMode ? 2.5 : 2.05), H * 1.32, -L * 1.3],
+        look: [0, H * 0.41, L * 0.12],
       },
       left: { pos: [-W * 3.8, H * 1.0, L * 0.28], look: [0, H * 0.40, L * 0.28] },
       right: { pos: [W * 3.8, H * 1.0, L * 0.28], look: [0, H * 0.40, L * 0.28] },
