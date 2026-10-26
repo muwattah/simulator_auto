@@ -1,5 +1,4 @@
 import { ArrowLeft, Settings, Phone } from 'lucide-react';
-import { useConfiguratorStore } from '../store/configuratorStore';
 import { company } from '../config/company';
 
 interface Props {
@@ -8,60 +7,37 @@ interface Props {
 }
 
 export default function Header({ onAdminClick, onBackHome }: Props) {
-  const pricing = useConfiguratorStore((s) => s.getPricing());
-  const vehicleLabel = useConfiguratorStore((s) => s.getVehicleLabel());
-  const hasVehicle = useConfiguratorStore((s) => s.configuration.vehicleCategory);
-  const itemCount = pricing.items.length;
-  const priceLabel =
-    itemCount === 0 ? 'Nog geen selectie' : pricing.hasPending ? `${pricing.pendingCount}× op aanvraag` : 'Volledig bekend';
-
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg-primary)]/95 backdrop-blur-md">
-      <div className="max-w-[1600px] mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="mx-auto flex h-14 max-w-[1920px] items-center justify-between gap-3 px-3 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
           {onBackHome && (
-            <button type="button" onClick={onBackHome} className="btn-ghost btn-sm shrink-0 -ml-1" aria-label="Terug naar home">
-              <ArrowLeft size={18} />
-              <span className="hidden sm:inline">Home</span>
+            <button type="button" onClick={onBackHome} aria-label="Terug naar home"
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-white sm:text-sm">
+              <ArrowLeft size={18} /><span>Home</span>
             </button>
           )}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img
-              src={`${import.meta.env.BASE_URL}brand/rs-logo-sm.png`}
-              alt="RS Car Cleaning — Tools And Supplies"
-              className="h-8 w-auto object-contain shrink-0"
-              width={80}
-              height={40}
-            />
+          <div className="h-7 w-px shrink-0 bg-[var(--border)]" />
+          <div className="flex min-w-0 items-center gap-2.5">
+            <img src={import.meta.env.BASE_URL + 'brand/rs-logo-sm.png'}
+              alt="RS Car Detailing" width={75} height={38}
+              className="h-8 w-auto shrink-0 object-contain" />
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold tracking-[0.12em] text-[var(--text-muted)] leading-none">{company.shortName.toUpperCase()}</p>
-              <p className="text-sm font-bold text-[var(--text-primary)] truncate leading-tight">Configurator</p>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                {company.shortName}
+              </p>
+              <p className="text-sm font-bold leading-tight text-[var(--text-primary)]">Configurator</p>
             </div>
           </div>
         </div>
-        {hasVehicle && (
-          <div className="hidden md:flex items-center gap-5 text-right">
-            <div>
-              <p className="label-meta">Voertuig</p>
-              <p className="text-sm font-medium text-[var(--text-primary)]">{vehicleLabel}</p>
-            </div>
-            <div className="h-8 w-px bg-[var(--border)]" />
-            <div>
-              <p className="label-meta">Prijsstatus</p>
-              <p className="text-sm font-semibold text-[var(--accent)]">{priceLabel}</p>
-            </div>
-          </div>
-        )}
         <div className="flex items-center gap-1">
-          <a
-            href={`tel:${company.phoneE164}`}
-            className="p-2.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface)] rounded-btn transition-colors hidden sm:inline-flex"
-            title={`Bel ${company.phoneDisplay}`}
-            aria-label={`Bel ${company.phoneDisplay}`}
-          >
+          <a href={'tel:' + company.phoneE164}
+            aria-label={'Bel ' + company.phoneDisplay} title={'Bel ' + company.phoneDisplay}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-white">
             <Phone size={18} />
           </a>
-          <button type="button" onClick={onAdminClick} className="p-2.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface)] rounded-btn transition-colors" title="Admin" aria-label="Admin panel">
+          <button type="button" onClick={onAdminClick} title="Beheer" aria-label="Beheer"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-white">
             <Settings size={18} />
           </button>
         </div>
