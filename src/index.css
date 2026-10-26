@@ -221,3 +221,9 @@ body {
 .detailing-viewer button { min-height: 44px; min-width: 44px; }
 
 .detailing-viewer { scroll-margin-top: 74px; }
+
+/* Original hero JPEG: retain source pixels and focus the cargo opening. */
+.rs-home-hero-image { object-fit: cover; object-position: center 32%; }
+@media (min-width: 768px) {
+  .rs-home-hero-image { object-position: center 38%; }
+}
