@@ -86,7 +86,7 @@ function ProductCard({ item, active, onSelect }: {
   return (
     <article className={'flex min-w-0 flex-col overflow-hidden rounded-xl border transition-colors ' +
       (active ? 'border-sky-500 bg-sky-500/10' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)]')}>
-      <div className="relative h-28 overflow-hidden bg-[#11171f] sm:h-32 2xl:h-36">
+      <div className="relative h-24 overflow-hidden bg-[#11171f] sm:h-28 2xl:h-30">
         {photoFailed ? (
           <div className="flex h-full items-center justify-center text-sky-400"><Package size={34} strokeWidth={1.5} /></div>
         ) : (
