@@ -1,0 +1,115 @@
+name: Importeer HygieMeca productfoto's
+
+on:
+  push:
+    paths:
+      - .github/workflows/import-hygiemeca-fotos.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  download-fotos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download 21 originele galerijfoto's
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from urllib.parse import quote
+          from urllib.error import HTTPError
+          import time
+
+          site = "https://www.hygiemeca.com"
+          root = Path("public/productfotos/hygiemeca")
+          products = [
+              ("01_support_pour_brosses", "support-pour-brosses", [4459,4460,4461,4462],
+               "1466-support-pour-brosses-0798789441403.html"),
+              ("02_support_pinceaux_et_pulverisateurs", "support-pinceaux-et-pulverisateurs",
+               [3712,3713,3714,3715,3716],
+               "1298-support-pinceaux-et-pulverisateurs-0757233281743.html"),
+              ("03_support_polisseuse", "support-polisseuse", [8974,8975,8976,8977,8978],
+               "1294-support-polisseuse-0719704935968.html"),
+              ("04_support_pour_pinceaux", "support-pour-pinceaux", [4451,4452,4453,4454],
+               "1465-support-pour-pinceaux-0798789441397.html"),
+              ("05_support_mural_boite_de_gants", "support-mural-pour-boite-de-gants",
+               [5289,5287,5288], "1631-support-mural-pour-boite-de-gants-0719704935388.html"),
+          ]
+
+          photos = []
+          lines = ["Bron: https://www.hygiemeca.com", "21 verwachte foto's, 5 producten.", ""]
+          for folder, slug, ids, page in products:
+              lines.append(f"{folder}: {site}/rangement-atelier/{page}")
+              for i, photo_id in enumerate(ids, 1):
+                  path = root / folder / f"{i:02}.jpg"
+                  url = f"{site}/{photo_id}-large_default/{slug}.jpg"
+                  photos.append((path, url))
+                  lines.append(f"{path.relative_to(root)} | {url}")
+              lines.append("")
+
+          headers = {
+              "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+              "Referer": site + "/",
+              "Accept": "image/jpeg,image/*;q=0.8,*/*;q=0.5",
+          }
+
+          def download(item):
+              path, url = item
+              fallback = "https://images.weserv.nl/?url=" + quote(url, safe="") + "&output=jpg"
+              errors = []
+              for candidate in (url, fallback):
+                  for attempt in range(2):
+                      try:
+                          req = Request(candidate, headers=headers)
+                          with urlopen(req, timeout=22) as response:
+                              body = response.read()
+                          if len(body) < 256 or body[:3] != b"\\xff\\xd8\\xff":
+                              raise RuntimeError("geen echte JPEG-foto")
+                          path.parent.mkdir(parents=True, exist_ok=True)
+                          path.write_bytes(body)
+                          return (str(path.relative_to(root)), len(body), None)
+                      except Exception as exc:
+                          errors.append(f"{candidate}: {exc}")
+                          if attempt == 0:
+                              time.sleep(1)
+              return (str(path.relative_to(root)), 0, " | ".join(errors))
+
+          results = []
+          with ThreadPoolExecutor(max_workers=7) as pool:
+              for future in as_completed([pool.submit(download, item) for item in photos]):
+                  result = future.result()
+                  results.append(result)
+                  print(("OK" if result[1] else "MISLUKT"), result[0], result[1], flush=True)
+
+          ok = [r for r in results if r[1]]
+          failed = sorted((r for r in results if not r[1]), key=lambda r: r[0])
+          root.mkdir(parents=True, exist_ok=True)
+          (root / "BRONNEN.txt").write_text("\\n".join(lines)+"\\n", encoding="utf-8")
+          if failed:
+              (root / "ONTBREKENDE_FOTOS.txt").write_text(
+                  "\\n".join(f"{r[0]}: {r[2]}" for r in failed) + "\\n", encoding="utf-8")
+          else:
+              (root / "ONTBREKENDE_FOTOS.txt").unlink(missing_ok=True)
+          print(f"TOTAAL: {len(ok)} van de {len(photos)} foto's binnen", flush=True)
+          if not ok:
+              raise RuntimeError("Geen van de foto-URLs kon worden opgehaald; geen lege mappen committen")
+          PY
+      - name: Plaats foto's in repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/productfotos/hygiemeca/
+          if git diff --cached --quiet; then
+            echo "Geen nieuwe foto's"
+          else
+            git commit -m "Voeg HygieMeca productfoto's toe [skip ci]"
+            git push origin HEAD:main
+          fi
