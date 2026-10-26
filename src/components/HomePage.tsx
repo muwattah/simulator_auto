@@ -15,16 +15,10 @@ const SYSTEMS = [
   { id: 'storage', icon: Package, title: 'Opslag', desc: 'Frames, rekken, houders', meta: 'Modulair' },
 ];
 const STEPS = [
-  { n: '01', title: 'Kies je voertuig', text: 'Compact, medium, groot of aanhanger.' },
-  { n: '02', title: 'Stel je installatie samen', text: 'Tank, haspels, machines en opslag.' },
+  { n: '01', title: 'Kies je watertank', text: 'Start direct met je apparatuur, zonder eerst een voertuig te kiezen.' },
+  { n: '02', title: 'Voeg apparatuur toe', text: 'Haspels, machines, frames en opslag.' },
   { n: '03', title: 'Bekijk alles direct in 3D', text: 'Zie plaatsing en ruimte in realtime.' },
-  { n: '04', title: 'Vraag je offerte aan', text: 'Configuratie + wensen naar de installateur.' },
-];
-const VEHICLES = [
-  { id: 'compact', label: 'Compact', example: 'Caddy / Berlingo-formaat' },
-  { id: 'medium', label: 'Medium', example: 'Vito / Transporter-formaat' },
-  { id: 'large', label: 'Large', example: 'Sprinter / Crafter-formaat' },
-  { id: 'trailer', label: 'Trailer', example: 'Mobiele aanhangwagenopstelling' },
+  { n: '04', title: 'Vertel ons welke bus je hebt', text: 'Pas aan het einde vragen we naar jouw eigen bestelwagen.' },
 ];
 const COMPONENTS = [
   { title: 'Watertank', meta: '210–1000 L' },
@@ -331,20 +325,25 @@ export default function HomePage({ onStart }: Props) {
       </section>
 
       <section className="section bg-[var(--bg-secondary)] border-t border-[var(--border)]">
-        <div className="container-content">
-          <div className="max-w-2xl mb-10">
-            <p className="eyebrow mb-3">Voertuigen</p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Van compacte bestelwagen tot complete mobiele unit.</h2>
-            <p className="mt-3 text-[var(--text-secondary)] text-sm">Categorievoorbeelden — exacte fitment wordt per project beoordeeld.</p>
+        <div className="container-content grid lg:grid-cols-2 gap-8 items-center">
+          <div>
+            <p className="eyebrow mb-3">Eenvoudig samenstellen</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Eerst je installatie. Je eigen bus pas op het einde.</h2>
+            <p className="mt-4 text-[var(--text-secondary)] leading-relaxed">
+              Je ontwerpt alles in één algemene 3D-voorbeeldbestelwagen, ongeveer in het formaat van een Ford Transit Custom.
+              Zo kun je direct beginnen en zie je jouw apparatuur live verschijnen.
+            </p>
+            <p className="mt-3 text-sm text-[var(--text-muted)]">
+              Bij de offerteaanvraag geef je jouw echte merk en model door. Wij controleren daarna de afmetingen, montage en belading voor jouw voertuig.
+            </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {VEHICLES.map((v) => (
-              <button key={v.id} type="button" onClick={onStart} className="card p-5 text-left hover:border-[var(--accent)]/40 transition-all">
-                <div className="w-10 h-10 rounded-lg bg-[var(--surface-muted)] border border-[var(--border)] flex items-center justify-center mb-3"><Truck size={18} className="text-[var(--text-muted)]" /></div>
-                <p className="font-semibold">{v.label}</p>
-                <p className="label-meta mt-1">{v.example}</p>
-              </button>
-            ))}
+          <div className="card p-6 flex items-start gap-4">
+            <div className="w-12 h-12 shrink-0 flex items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]"><Truck size={25} /></div>
+            <div>
+              <h3 className="font-bold text-lg">Eén voorbeeldbus, direct aan de slag</h3>
+              <p className="text-sm text-[var(--text-secondary)] mt-2">Geen automerken, lengtes of dakhoogtes kiezen voordat je kunt starten.</p>
+              <button type="button" onClick={onStart} className="btn-primary btn-sm mt-5">Start met je installatie <ArrowRight size={16} /></button>
+            </div>
           </div>
         </div>
       </section>
