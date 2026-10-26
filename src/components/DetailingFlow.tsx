@@ -19,6 +19,7 @@ import {
   getProduct,
 } from '../data/detailingCatalog';
 import LoadSpaceViewer from './LoadSpaceViewer';
+import DetailingPhotoGallery from './DetailingPhotoGallery';
 import { vehicleModels } from '../data/vehicleModels';
 import QuoteForm from './QuoteForm';
 import { formatPriceOrPending } from '../lib/pricing';
@@ -531,6 +532,7 @@ function StepContent() {
             <OptionCard key={o.id} selected={c.frameComboId === o.id} onClick={() => { setFrameCombo(o.id); markVisited('frame'); }} title={o.label} />
           ))}
         </div>
+        <DetailingPhotoGallery group="frame" compact />
       </div>
     );
   }
@@ -549,6 +551,7 @@ function StepContent() {
             <OptionCard key={o.id} selected={c.extraIds.includes(o.id)} onClick={() => { toggleExtra(o.id); markVisited('extras'); }} title={o.label} />
           ))}
         </div>
+        <DetailingPhotoGallery group="accessories" compact />
       </div>
     );
   }
