@@ -199,6 +199,7 @@ export interface ConfigurationSnapshot {
   vehicleCategory: VehicleCategory | null;
   cabType: CabType | null;
   vehicleModelId?: string | null;
+  customerVehicleDescription?: string;
   vehicleLength?: VehicleLength;
   vehicleRoof?: VehicleRoof;
   tank: string | null;
