@@ -21,11 +21,11 @@ function supportsWebGL(): boolean {
 }
 
 const CAMERAS: { id: CameraPreset; label: string }[] = [
-  { id: 'overview', label: '3D' },
+  { id: 'top', label: 'Boven' },
+  { id: 'overview', label: 'Schuin' },
   { id: 'rear', label: 'Achter' },
   { id: 'left', label: 'Links' },
   { id: 'right', label: 'Rechts' },
-  { id: 'top', label: 'Boven' },
 ];
 
 export default function LoadSpaceViewer() {
@@ -42,13 +42,13 @@ export default function LoadSpaceViewer() {
   const [mode, setMode] = useState<'3d' | '2d' | 'foto'>('3d');
   const [force2d, setForce2d] = useState(false);
   const [webglOk, setWebglOk] = useState(true);
-  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('overview');
+  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('top');
   const [cameraRevision, setCameraRevision] = useState(0);
   const [zoomStep, setZoomStep] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [vanSettings, setVanSettings] = useState<VanViewSettings>({
     body: 'transparent',
-    roofVisible: true,
+    roofVisible: false,
     doorsOpen: true,
   });
   const updateVanSettings = (change: Partial<VanViewSettings>) =>
@@ -101,7 +101,7 @@ export default function LoadSpaceViewer() {
           ))}
           <button type="button" aria-label="Inzoomen" onClick={() => setZoomStep(v => v + 1)}><ZoomIn size={17} /></button>
           <button type="button" aria-label="Uitzoomen" onClick={() => setZoomStep(v => v - 1)}><ZoomOut size={17} /></button>
-          <button type="button" onClick={() => { setCameraPreset('overview'); setCameraRevision(v => v + 1); }} className="ml-auto p-1 text-[var(--text-muted)]" title="Reset camera" aria-label="Reset camera"><RotateCcw size={14} /></button>
+          <button type="button" onClick={() => { setCameraPreset('top'); setCameraRevision(v => v + 1); }} className="ml-auto p-1 text-[var(--text-muted)]" title="Reset camera" aria-label="Reset camera"><RotateCcw size={14} /></button>
           <button type="button" onClick={() => setSettingsOpen(open => !open)}
             className={`inline-flex gap-1 items-center px-2.5 py-1 rounded-md text-[11px] border font-semibold ${settingsOpen ? 'bg-[var(--accent-soft)] border-[var(--accent-muted)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}
             aria-expanded={settingsOpen} aria-controls="van-display-settings">
