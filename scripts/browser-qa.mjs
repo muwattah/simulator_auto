@@ -73,7 +73,7 @@ try {
     await page.getByText('Generator 3000 W').first().waitFor();
     await page.getByRole('searchbox', { name: 'Zoek onderdelen' }).fill('');
 
-    await page.getByRole('button', { name: 'Installatie', exact: true }).click();
+    await page.getByRole('button', { name: 'Installatie', exact: true }).first().click();
     await page.getByRole('button', { name: 'Door ons laten inbouwen' }).click();
     await page.getByRole('button', { name: 'Overzicht', exact: true }).click();
     await page.locator('#qf-vehicle').fill('Ford Transit Custom, 2022, L2');
