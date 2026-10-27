@@ -286,10 +286,6 @@ export type SubmitQuoteResult =
  * Without both public settings we keep the existing local-only behavior and
  * never suggest that email was sent.
  */
-export const quoteEmailConfigured = Boolean(
-  import.meta.env.VITE_QUOTE_API_URL && import.meta.env.VITE_QUOTE_TURNSTILE_SITE_KEY,
-);
-
 function saveLocal(payload: QuotePayload): boolean {
   try {
     const key = 'rs-quote-requests';
@@ -302,8 +298,8 @@ function saveLocal(payload: QuotePayload): boolean {
   }
 }
 
-export async function submitQuoteRequest(payload: QuotePayload, turnstileToken?: string | null): Promise<SubmitQuoteResult> {
-  if (!quoteEmailConfigured) {
+export async function submitQuoteRequest(payload: QuotePayload, turnstileToken?: string | null, apiEndpoint?: string): Promise<SubmitQuoteResult> {
+  if (!apiEndpoint) {
     const saved = saveLocal(payload);
     return saved ? {
       ok: true,
@@ -321,7 +317,7 @@ export async function submitQuoteRequest(payload: QuotePayload, turnstileToken?:
   }
 
   try {
-    const response = await fetch(import.meta.env.VITE_QUOTE_API_URL, {
+    const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ payload, turnstileToken }),
