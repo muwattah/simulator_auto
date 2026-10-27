@@ -74,6 +74,7 @@ export default function QuoteForm({ onClose }: Props) {
     payload: QuotePayload;
     summary: string;
     message: string;
+    mode: 'email' | 'local';
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -165,6 +166,7 @@ export default function QuoteForm({ onClose }: Props) {
         payload: finalPayload,
         summary,
         message: submitResult.message,
+        mode: submitResult.mode,
       });
     } finally {
       setSubmitting(false);
@@ -191,7 +193,7 @@ export default function QuoteForm({ onClose }: Props) {
               <Check size={20} className="text-[var(--accent)]" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg text-[var(--text-primary)]">Configuratie voorbereid</h3>
+              <h3 className="font-semibold text-lg text-[var(--text-primary)]">{result.mode === 'email' ? 'Offerteaanvraag verzonden' : 'Configuratie lokaal voorbereid'}</h3>
               <p className="mt-1 text-sm text-[var(--text-secondary)] leading-relaxed">{result.message}</p>
               <p className="mt-3 text-sm">
                 <span className="text-[var(--text-muted)]">Referentie: </span>
