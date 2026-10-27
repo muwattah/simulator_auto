@@ -50,9 +50,9 @@ function deliverThroughFormSubmit(payload: QuotePayload, summary: string): void 
   const jpg = new Uint8Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) jpg[i] = bytes.charCodeAt(i);
   const photo = new File([jpg], payload.configurationId + '.jpg', { type: 'image/jpeg' });
-  const json = new File([JSON.stringify({ ...payload, previewImageDataUrl: null }, null, 2)],
-    payload.configurationId + '.json', { type: 'application/json' });
-  if (photo.size + json.size > FILE_SIZE_LIMIT)
+  // A single documented JPEG attachment is more reliable than sending two
+  // file inputs; the selected configuration is already included as text.
+  if (photo.size > FILE_SIZE_LIMIT)
     throw new Error('De eindfoto is te groot om als bijlage te verzenden.');
 
   const form = document.createElement('form');
@@ -75,10 +75,17 @@ function deliverThroughFormSubmit(payload: QuotePayload, summary: string): void 
     const input = document.createElement('input');
     input.type = 'file';
     input.name = name;
+    input.accept = 'image/jpeg';
     input.files = transfer.files;
     form.appendChild(input);
   };
 
+  // FormSubmit redirects after processing back to our own website.
+  // Use an absolute URL as required by FormSubmit; all paths work on GitHub Pages.
+  const doneUrl = new URL(import.meta.env.BASE_URL + 'configurator/', window.location.origin);
+  doneUrl.searchParams.set('offerte', 'verzonden');
+  doneUrl.searchParams.set('referentie', payload.configurationId);
+  add('_next', doneUrl.toString());
   add('_subject', 'Nieuwe offerteaanvraag ' + payload.configurationId + ' - RS Car Detailing');
   add('_template', 'table');
   add('_captcha', 'true');
@@ -98,8 +105,8 @@ function deliverThroughFormSubmit(payload: QuotePayload, summary: string): void 
   add('gekozen_onderdelen_en_montage', summary);
   add('opmerkingen', payload.customer.remarks ?? '');
   add('privacytoestemming', payload.privacyConsent ? 'Ja' : 'Nee');
-  attach('eindfoto', photo);
-  attach('volledige_configuratie', json);
+  // FormSubmit documents the standard file-input field name "attachment".
+  attach('attachment', photo);
   document.body.appendChild(form);
   HTMLFormElement.prototype.submit.call(form);
 }
@@ -334,7 +341,7 @@ export default function QuoteForm({ onClose }: Props) {
           : <p className="p-4 text-sm text-[var(--warning)]">De 3D-afbeelding kon niet worden gemaakt. De onderdelenlijst blijft beschikbaar.</p>)
           : <p className="p-4 text-sm text-[var(--text-secondary)]" role="status">Afbeelding van jouw installatie wordt gemaakt…</p>}
         <p className="p-3 text-xs text-[var(--text-muted)]">{FORM_SUBMIT_RECIPIENT
-          ? 'De eindfoto en volledige selectie worden als bijlagen naar de beheerder verzonden. De klant krijgt een automatische tekstbevestiging met onderdelenlijst (zonder foto-bijlage). Na de knop volgt een beveiligingscontrole van FormSubmit; bij het eerste gebruik moet het ontvangstadres eenmalig worden geactiveerd.'
+          ? 'Jouw onderdelenlijst en de JPG-eindfoto worden doorgestuurd naar ons e-mailadres. De klant krijgt een automatische tekstbevestiging (zonder foto-bijlage). Na verzenden kom je terug op deze website. Bij de eerste aanvraag moet het ontvangstadres geactiveerd zijn.'
           : 'Je kunt deze aanvraag en eindfoto bewaren. Verzending is in deze ontwikkelomgeving niet actief.'}</p>
       </div>
 
