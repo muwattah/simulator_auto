@@ -1,6 +1,7 @@
+import { CATEGORY_PATHS, type SiteRoute } from '../seo/routes';
 import DoorMountControl from './DoorMountControl';
 import { canMountOnDoor } from '../lib/doorMounts';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box, Check, ChevronRight, ClipboardList, Droplets, Info,
   Minus, Package, Plus, Search, SlidersHorizontal, Wrench,
@@ -182,11 +183,14 @@ function OverviewPanel({ showProducts }: { showProducts: () => void }) {
   );
 }
 
-export default function DetailingFlow() {
+export default function DetailingFlow({route,onNavigate}:{route:SiteRoute;onNavigate:(path:string)=>void}) {
   const store = useConfiguratorStore();
   const config = store.configuration;
-  const [panel, setPanel] = useState<Panel>('products');
-  const [category, setCategory] = useState<Category>('tank');
+  const [lastCategory,setLastCategory]=useState<Category>('tank');
+  const category=route.category ?? lastCategory;
+  const panel:Panel=route.panel ?? 'products';
+  const setPanel=(next:Panel)=>onNavigate(next==='products'?CATEGORY_PATHS[category]:next==='installation'?'/configurator/installatie/':'/configurator/overzicht/');
+  useEffect(()=>{if(route.category)store.setStep(route.category);},[route.category,store.setStep]);
   const [search, setSearch] = useState('');
   const [onlyChosen, setOnlyChosen] = useState(false);
   const selectedItems = products.filter(p => chosen(config, p) && p.id !== 'lining_none');
@@ -202,10 +206,10 @@ export default function DetailingFlow() {
     return canChooseDemoOption(config, patch(config, p), p.id, active);
   });
   function selectCategory(id: Category) {
-    setCategory(id);
+    setLastCategory(id);
     setSearch('');
     setOnlyChosen(false);
-    setPanel('products');
+    onNavigate(CATEGORY_PATHS[id]);
     store.setStep(id);
     store.markVisited(id);
   }

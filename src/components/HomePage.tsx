@@ -1,10 +1,11 @@
+import { sitePath, type PublicPage } from '../seo/routes';
 import { useEffect, useState } from 'react';
 import {
   ArrowRight, Box, Check, Droplets, Gauge, Layers, Package, Truck, Wind, Zap, Menu, X,
 } from 'lucide-react';
 import { company } from '../config/company';
 
-interface Props { onStart: () => void; }
+interface Props { onStart: () => void; page?: PublicPage; }
 
 const SYSTEMS = [
   { id: 'water', icon: Droplets, title: 'Water', desc: '210–1000 L tanks', meta: 'Vlotter optioneel' },
@@ -63,24 +64,23 @@ function HeroInstallPreview({ dense }: { dense?: boolean }) {
   );
 }
 
-export default function HomePage({ onStart }: Props) {
+export default function HomePage({ onStart, page = 'home' }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  useEffect(()=>setMenuOpen(false),[page]);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-  const scrollTo = (id: string) => {
-    setMenuOpen(false);
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  };
+
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded focus:bg-sky-500 focus:p-3 focus:text-white">Naar de inhoud</a>
       <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-base border-b border-transparent ${scrolled || menuOpen ? 'header-scrolled' : 'bg-transparent'}`}>
         <div className="container-content flex items-center justify-between h-16 md:h-[4.25rem]">
-          <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-left group flex items-center gap-2.5">
+          <a href={sitePath('/')} className="text-left group flex items-center gap-2.5">
             <img
               src={`${import.meta.env.BASE_URL}brand/rs-logo-sm.png`}
               alt="RS Car Cleaning — Tools And Supplies"
@@ -92,13 +92,13 @@ export default function HomePage({ onStart }: Props) {
               <span className="block text-[11px] font-semibold tracking-[0.16em] text-[var(--text-muted)]">RS CAR DETAILING</span>
               <span className="block text-sm font-bold tracking-wide text-[var(--text-primary)] -mt-0.5">CONFIGURATOR</span>
             </span>
-          </button>
+          </a>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[var(--text-secondary)]">
-            <button type="button" onClick={() => scrollTo('hoe-het-werkt')} className="hover:text-[var(--text-primary)] transition-colors">Hoe het werkt</button>
-            <button type="button" onClick={() => scrollTo('realisaties')} className="hover:text-[var(--text-primary)] transition-colors">Realisaties</button>
-            <button type="button" onClick={() => scrollTo('mogelijkheden')} className="hover:text-[var(--text-primary)] transition-colors">Mogelijkheden</button>
-            <button type="button" onClick={() => scrollTo('showcase')} className="hover:text-[var(--text-primary)] transition-colors">3D Configurator</button>
-            <button type="button" onClick={onStart} className="hover:text-[var(--text-primary)] transition-colors">Configurator</button>
+            <a href={sitePath('/hoe-het-werkt/')} className="hover:text-[var(--text-primary)] transition-colors">Hoe het werkt</a>
+            <a href={sitePath('/realisaties/')} className="hover:text-[var(--text-primary)] transition-colors">Realisaties</a>
+            <a href={sitePath('/mogelijkheden/')} className="hover:text-[var(--text-primary)] transition-colors">Mogelijkheden</a>
+            <a href={sitePath('/configurator/')} className="hover:text-[var(--text-primary)] transition-colors">3D Configurator</a>
+            <a href={sitePath('/contact/')} className="hover:text-[var(--text-primary)] transition-colors">Contact</a>
           </nav>
           <div className="flex items-center gap-3">
             <button type="button" onClick={onStart} className="btn-primary btn-sm hidden sm:inline-flex">Start configureren <ArrowRight size={16} /></button>
@@ -110,15 +110,27 @@ export default function HomePage({ onStart }: Props) {
         {menuOpen && (
           <div className="md:hidden border-t border-[var(--border)] bg-[var(--bg-primary)]">
             <div className="container-content py-4 flex flex-col gap-1">
-              {[{ label: 'Hoe het werkt', id: 'hoe-het-werkt' }, { label: 'Realisaties', id: 'realisaties' }, { label: 'Mogelijkheden', id: 'mogelijkheden' }, { label: '3D Configurator', id: 'showcase' }].map((item) => (
-                <button key={item.id} type="button" onClick={() => scrollTo(item.id)} className="text-left py-3 px-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium">{item.label}</button>
+              {[{ label: 'Hoe het werkt', id: 'hoe-het-werkt' }, { label: 'Realisaties', id: 'realisaties' }, { label: 'Mogelijkheden', id: 'mogelijkheden' }, { label: '3D Configurator', id: 'showcase' }, { label: 'Contact', id: 'contact' }].map((item) => (
+                <a key={item.id} href={sitePath(item.id === 'showcase' ? '/configurator/' : '/'+item.id+'/')} onClick={() => setMenuOpen(false)} className="text-left py-3 px-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium">{item.label}</a>
               ))}
               <button type="button" onClick={onStart} className="btn-primary mt-2 w-full">Start configureren <ArrowRight size={16} /></button>
             </div>
           </div>
         )}
       </header>
+      <main id="main-content" tabIndex={-1}>
+      {page !== 'home' && <section className="container-content pt-32 pb-10">
+        <nav aria-label="Kruimelpad" className="mb-6 text-xs text-[var(--text-muted)]"><a href={sitePath('/')} className="hover:text-sky-300">Home</a><span aria-hidden="true"> / </span><span>{({how:'Hoe het werkt',realisations:'Realisaties',possibilities:'Mogelijkheden',contact:'Contact'})[page]}</span></nav>
+        <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">{({how:'Zo ontwerp je jouw mobiele detailingwerkplaats.',realisations:'Gerealiseerde werkbusinrichtingen.',possibilities:'Apparatuur voor jouw mobiele detailinginstallatie.',contact:'Bespreek jouw werkbusinrichting.'})[page]}</h1>
+        <p className="mt-5 max-w-2xl text-[var(--text-secondary)] leading-relaxed">{({how:'Kies eerst de apparatuur, bekijk de opstelling in 3D en geef bij de aanvraag jouw echte voertuig door. Wij controleren de inbouw vóór een definitieve offerte.',realisations:'Bekijk bestaande RS-realisaties en ontdek hoe water, haspels, machines en opslag samenkomen in een mobiele werkplaats.',possibilities:'Van watervoorraad tot reinigingsapparatuur en deurrekken: combineer de onderdelen die passen bij jouw manier van werken.',contact:'Een vraag over onderdelen, montage of jouw bestelwagen? Neem rechtstreeks contact op met RS Car Detailing in Borsbeek.'})[page]}</p>
+      </section>}
+      {page === 'contact' && <section className="container-content pb-16 grid gap-6 md:grid-cols-2">
+        <div className="card p-7"><h2 className="text-xl font-bold">Rechtstreeks contact</h2><p className="mt-3 text-[var(--text-secondary)]">{company.name} · {company.location}</p><a href={'tel:'+company.phoneE164} className="btn-primary mt-6">Bel {company.phoneDisplay}</a>{company.whatsappUrl && <a href={company.whatsappUrl} className="btn-secondary ml-3 mt-3">WhatsApp</a>}</div>
+        <div className="card p-7"><h2 className="text-xl font-bold">Bereid jouw installatie voor</h2><p className="mt-3 text-[var(--text-secondary)] leading-relaxed">Maak een samenstelling in de configurator en bewaar de afbeelding en onderdelenlijst. Geef daarna je merk, model en eventuele voertuigafmetingen door. Automatische e-mailverzending vanuit de configurator is nog niet actief.</p><a href={sitePath('/configurator/')} className="btn-secondary mt-5">Open de configurator <ArrowRight size={16} /></a></div>
+      </section>}
 
+
+      {["home"].includes(page) && (
       <section className="rs-home-hero" aria-labelledby="hero-title">
         <div className="rs-hero-copy">
           <p className="rs-hero-eyebrow"><span /> RS Car Detailing · Op maat gebouwd</p>
@@ -126,7 +138,7 @@ export default function HomePage({ onStart }: Props) {
           <p className="rs-hero-description">Van watertank tot slanghaspel: ontdek hoe jouw mobiele detailingwerkplaats eruit kan zien. Stel alles zelf samen en bekijk het direct in 3D.</p>
           <div className="rs-hero-actions">
             <button type="button" onClick={onStart} className="btn-primary btn-lg">Start jouw configuratie <ArrowRight size={19} /></button>
-            <button type="button" onClick={() => scrollTo('realisaties')} className="rs-hero-secondary">Bekijk realisaties <ArrowRight size={17} /></button>
+            <a href={sitePath('/realisaties/')} className="rs-hero-secondary">Bekijk realisaties <ArrowRight size={17} /></a>
           </div>
           <div className="rs-hero-assurance">
             {['Echte werkbusinrichtingen', 'Alles op maat', 'Interactief in 3D'].map(t => <span key={t}><Check size={14} />{t}</span>)}
@@ -135,13 +147,15 @@ export default function HomePage({ onStart }: Props) {
         <figure className="rs-hero-photo">
           <img src={`${import.meta.env.BASE_URL}images/fotorscar.jpg`}
             alt="Geopende RS Car Detailing werkbus met gemonteerde slanghaspels en professionele reinigingsapparatuur"
-            loading="eager" decoding="async" fetchPriority="high" width={1440} height={1800}
+            loading="eager" decoding="async" {...{fetchpriority:'high'}} width={1440} height={1800}
             className="rs-home-hero-image" />
           <figcaption><span className="rs-hero-photo-label">VAN IDEE NAAR INBOUW</span><strong>Jouw werkplaats. Overal.</strong><span>Een echte RS Car Detailing realisatie</span></figcaption>
           <span className="rs-hero-photo-index" aria-hidden="true">RS / 01</span>
         </figure>
       </section>
+      )}
 
+      {["home", "how"].includes(page) && (
       <section id="hoe-het-werkt" className="section border-t border-[var(--border)]">
         <div className="container-content">
           <div className="max-w-2xl mb-12">
@@ -159,7 +173,9 @@ export default function HomePage({ onStart }: Props) {
           </div>
         </div>
       </section>
+      )}
 
+      {["home", "realisations"].includes(page) && (
       <section id="realisaties" className="section bg-[var(--bg-secondary)] border-t border-[var(--border)]">
         <div className="container-content">
           <div className="max-w-2xl mb-10">
@@ -201,7 +217,9 @@ export default function HomePage({ onStart }: Props) {
           </div>
         </div>
       </section>
+      )}
 
+      {["home", "possibilities"].includes(page) && (
       <section id="mogelijkheden" className="section bg-[var(--bg-secondary)] border-t border-[var(--border)]">
         <div className="container-content">
           <div className="max-w-2xl mb-12">
@@ -226,7 +244,9 @@ export default function HomePage({ onStart }: Props) {
           </div>
         </div>
       </section>
+      )}
 
+      {["home", "possibilities"].includes(page) && (
       <section className="section border-t border-[var(--border)]">
         <div className="container-content grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>
@@ -258,7 +278,9 @@ export default function HomePage({ onStart }: Props) {
           </div>
         </div>
       </section>
+      )}
 
+      {["home", "how", "possibilities"].includes(page) && (
       <section id="showcase" className="section bg-[var(--bg-secondary)] border-t border-[var(--border)]">
         <div className="container-content">
           <div className="max-w-2xl mb-10">
@@ -286,7 +308,9 @@ export default function HomePage({ onStart }: Props) {
           </div>
         </div>
       </section>
+      )}
 
+      {["home", "possibilities"].includes(page) && (
       <section className="section border-t border-[var(--border)]">
         <div className="container-content">
           <div className="max-w-2xl mb-10">
@@ -303,7 +327,9 @@ export default function HomePage({ onStart }: Props) {
           </div>
         </div>
       </section>
+      )}
 
+      {["home", "how"].includes(page) && (
       <section className="section bg-[var(--bg-secondary)] border-t border-[var(--border)]">
         <div className="container-content grid lg:grid-cols-2 gap-8 items-center">
           <div>
@@ -327,6 +353,7 @@ export default function HomePage({ onStart }: Props) {
           </div>
         </div>
       </section>
+      )}
 
       <section className="section border-t border-[var(--border)]">
         <div className="container-content text-center max-w-2xl mx-auto">
@@ -337,6 +364,8 @@ export default function HomePage({ onStart }: Props) {
           <p className="mt-6 text-xs text-[var(--text-muted)] max-w-md mx-auto">Geen definitieve prijs? Onderdelen zonder prijs worden duidelijk als &lsquo;prijs op aanvraag&rsquo; weergegeven.</p>
         </div>
       </section>
+
+      </main>
 
       <footer className="border-t border-[var(--border)] py-12 md:py-16">
         <div className="container-content">
@@ -356,19 +385,19 @@ export default function HomePage({ onStart }: Props) {
             <div>
               <p className="text-xs font-semibold tracking-wider text-[var(--text-muted)] mb-4">PRODUCT</p>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                <li><button type="button" onClick={onStart} className="hover:text-[var(--text-primary)]">Configurator</button></li>
-                <li><button type="button" onClick={() => scrollTo('mogelijkheden')} className="hover:text-[var(--text-primary)]">Mogelijkheden</button></li>
-                <li><button type="button" onClick={() => scrollTo('hoe-het-werkt')} className="hover:text-[var(--text-primary)]">Hoe het werkt</button></li>
+                <li><a href={sitePath('/configurator/')} className="hover:text-[var(--text-primary)]">Configurator</a></li>
+                <li><a href={sitePath('/mogelijkheden/')} className="hover:text-[var(--text-primary)]">Mogelijkheden</a></li>
+                <li><a href={sitePath('/hoe-het-werkt/')} className="hover:text-[var(--text-primary)]">Hoe het werkt</a></li>
               </ul>
             </div>
             <div>
               <p className="text-xs font-semibold tracking-wider text-[var(--text-muted)] mb-4">INSTALLATIE</p>
-              <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]"><li>Water</li><li>Hogedruk</li><li>Lucht & stroom</li><li>Opslag</li></ul>
+              <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]"><li><a href={sitePath('/configurator/water/')}>Water</a></li><li><a href={sitePath('/configurator/hogedruk/')}>Hogedruk</a></li><li><a href={sitePath('/configurator/lucht/')}>Lucht</a> &amp; <a href={sitePath('/configurator/stroom/')}>stroom</a></li><li><a href={sitePath('/configurator/extras/')}>Opslag en deurrekken</a></li></ul>
             </div>
             <div>
               <p className="text-xs font-semibold tracking-wider text-[var(--text-muted)] mb-4">CONTACT</p>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                <li>{company.location}</li>
+                <li><a href={sitePath('/contact/')}>{company.location} · Contact</a></li>
                 <li><a href={`tel:${company.phoneE164}`} className="hover:text-[var(--text-primary)]">{company.phoneDisplay}</a></li>
                 {company.whatsappUrl && (
                   <li><a href={company.whatsappUrl} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--text-primary)]">WhatsApp</a></li>
@@ -379,7 +408,7 @@ export default function HomePage({ onStart }: Props) {
           </div>
           <div className="pt-8 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between gap-3 text-xs text-[var(--text-muted)]">
             <p>{company.name} · Configurator · © {new Date().getFullYear()}</p>
-            <p>Prijzen op aanvraag · Maatwerk installatie</p>
+            <p>Prijzen op aanvraag · Maatwerk installatie · <a href={sitePath('/sitemap.xml')}>Sitemap</a></p>
           </div>
         </div>
       </footer>
