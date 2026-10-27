@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import Header from './components/Header';
 import DetailingFlow from './components/DetailingFlow';
 import AdminPanel from './components/AdminPanel';
@@ -35,6 +36,30 @@ function App() {
     const path=sitePath(route.path);
     if(route.page!=='not-found' && window.location.pathname!==path)window.history.replaceState({},'',path+window.location.search+window.location.hash);
   },[route]);
+  // FormSubmit's normal multipart POST preserves image attachments and its
+  // customer autoresponse, then redirects here instead of its own thank-you page.
+  // No query parameter can prove inbox delivery; it signals the provider redirect.
+  const search = new URLSearchParams(window.location.search);
+  const quoteSent = route.page === 'configurator' && search.get('offerte') === 'verzonden';
+  const quoteRef = search.get('referentie')?.slice(0, 40) ?? '';
+  if (quoteSent) return (
+    <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
+      <Header onAdminClick={() => navigate('/beheer/')} onBackHome={goHome} />
+      <main className="flex-1 flex items-center justify-center px-4 py-12" id="main-content">
+        <div role="status" className="card w-full max-w-2xl p-8 sm:p-12 text-center space-y-5">
+          <CheckCircle2 size={56} className="mx-auto text-[var(--accent)]" aria-hidden="true" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">Offerteaanvraag verstuurd</h1>
+          <p className="text-[var(--text-secondary)]">Bedankt! Je aanvraag is verwerkt door onze formulierdienst. We nemen contact met je op om de mogelijkheden en de prijs te bespreken.</p>
+          {quoteRef && <p className="text-sm text-[var(--text-secondary)]">Jouw referentie: <strong className="font-mono text-[var(--accent)]">{quoteRef}</strong></p>}
+          <p className="text-xs text-[var(--text-muted)]">De foto en onderdelenlijst worden via FormSubmit doorgestuurd. Ontvangst in onze mailbox wordt apart gecontroleerd.</p>
+          <div className="flex flex-wrap justify-center gap-3 pt-3">
+            <button type="button" onClick={goConfigurator} className="btn-primary">Terug naar configurator</button>
+            <button type="button" onClick={goHome} className="btn-secondary">Naar de startpagina</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
   if(route.page==='admin')return <AdminPanel onClose={goConfigurator}/>;
   if(route.page==='not-found')return <NotFoundPage/>;
   if(route.page!=='configurator')return <HomePage page={route.page} onStart={goConfigurator}/>;
