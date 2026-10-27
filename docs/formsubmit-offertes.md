@@ -1,8 +1,8 @@
 # E-mails voor offerteaanvragen via FormSubmit
 
-**Ontvangstadres:** asbhir.be@hotmail.com. Er is geen eigen domein, DNS-verificatie, API-key of backend-account nodig.
+**Ontvangstadres:** zakaria.el.a@hotmail.com. Er is geen eigen domein, DNS-verificatie, API-key of backend-account nodig.
 
-De openbare configurator op GitHub Pages verstuurt via een gewone HTML-formulier-POST met \`multipart/form-data\` naar \`https://formsubmit.co/asbhir.be%40hotmail.com\`.
+De openbare configurator op GitHub Pages verstuurt via een gewone HTML-formulier-POST met \`multipart/form-data\` naar \`https://formsubmit.co/zakaria.el.a%40hotmail.com\`.
 
 ## Wat wordt verstuurd?
 
@@ -15,7 +15,7 @@ De openbare configurator op GitHub Pages verstuurt via een gewone HTML-formulier
 
 1. Publiceer de code op GitHub Pages.
 2. Verstuur een **testaanvraag** via de simulator, met jouw eigen e-mailadres als testklant. FormSubmit toont daarbij mogelijk een reCAPTCHA.
-3. Open **asbhir.be@hotmail.com**, inclusief Ongewenste e-mail, en **klik op de activatielink van FormSubmit**. Zonder deze bevestiging worden offertes niet doorgestuurd.
+3. Open **zakaria.el.a@hotmail.com**, inclusief Ongewenste e-mail, en **klik op de activatielink van FormSubmit**. Zonder deze bevestiging worden offertes niet doorgestuurd.
 4. **Verstuur daarna opnieuw een testaanvraag**. Controleer of je beide bijlagen in Hotmail ontvangt en een tekstbevestiging naar het ingevulde klantadres komt.
 5. Tot een geslaagde echte verzending/ontvangst is dit niet geverifieerd als werkende productie-mail.
 
