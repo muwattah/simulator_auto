@@ -4,9 +4,9 @@ compatibility_date = "2026-10-01"
 
 [vars]
 ALLOWED_ORIGIN = "https://muwattah.github.io"
+QUOTE_ADMIN_EMAIL = "info@survion.shop"
 
 # Required Cloudflare Worker secrets, never committed:
 # RESEND_API_KEY       - Resend API key for verified sender domain
-# QUOTE_FROM_EMAIL    - verified sender, e.g. Offertes <offertes@your-domain.example>
-# QUOTE_ADMIN_EMAIL   - recipient inbox for RS Car Detailing
+# QUOTE_FROM_EMAIL    - verified sender mailbox address on your verified domain
 # TURNSTILE_SECRET_KEY - secret paired with your public Turnstile widget
