@@ -1,6 +1,5 @@
 import { summaryImage, renderSetupImage } from '../services/renderSetupImage';
-import QuoteTurnstile from './QuoteTurnstile';
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Check, Copy, MessageCircle, Phone, AlertCircle, FileText } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { company } from '../config/company';
@@ -31,8 +30,80 @@ type FormState = {
 
 type FieldErrors = Partial<Record<keyof FormState, string>>;
 
-const quoteEmailEndpoint = import.meta.env.VITE_QUOTE_API_URL as string | undefined;
-const quoteEmailConfigured = Boolean(quoteEmailEndpoint && import.meta.env.VITE_QUOTE_TURNSTILE_SITE_KEY);
+// FormSubmit requires a regular multipart form for JPG attachments and
+// non-AJAX submission for its built-in customer auto-response.
+// In local development, keep the existing local-only behavior for testing.
+const FORM_SUBMIT_RECIPIENT = import.meta.env.PROD ? 'asbhir.be@hotmail.com' : null;
+const FILE_SIZE_LIMIT = 10 * 1024 * 1024;
+
+/**
+ * Browser-native form post: FormSubmit handles its own reCAPTCHA, email
+ * activation, delivery and customer text auto-response.
+ */
+function deliverThroughFormSubmit(payload: QuotePayload, summary: string): void {
+  if (!FORM_SUBMIT_RECIPIENT) throw new Error('Verzenden is niet actief in deze ontwikkelomgeving.');
+  const encoded = payload.previewImageDataUrl;
+  if (!encoded?.startsWith('data:image/jpeg;base64,')) {
+    throw new Error('De eindfoto kon niet worden gemaakt. Probeer opnieuw in een browser met 3D-ondersteuning.');
+  }
+  const bytes = atob(encoded.slice('data:image/jpeg;base64,'.length));
+  const jpg = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) jpg[i] = bytes.charCodeAt(i);
+  const photo = new File([jpg], payload.configurationId + '.jpg', { type: 'image/jpeg' });
+  const json = new File([JSON.stringify({ ...payload, previewImageDataUrl: null }, null, 2)],
+    payload.configurationId + '.json', { type: 'application/json' });
+  if (photo.size + json.size > FILE_SIZE_LIMIT)
+    throw new Error('De eindfoto is te groot om als bijlage te verzenden.');
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = 'https://formsubmit.co/' + encodeURIComponent(FORM_SUBMIT_RECIPIENT);
+  form.enctype = 'multipart/form-data';
+  form.acceptCharset = 'UTF-8';
+  form.style.display = 'none';
+
+  const add = (name: string, value: string) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  };
+  const attach = (name: string, file: File) => {
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.name = name;
+    input.files = transfer.files;
+    form.appendChild(input);
+  };
+
+  add('_subject', 'Nieuwe offerteaanvraag ' + payload.configurationId + ' - RS Car Detailing');
+  add('_template', 'table');
+  add('_captcha', 'true');
+  add('_honey', '');
+  add('_autoresponse',
+    'Bedankt voor jouw offerteaanvraag bij RS Car Detailing. ' +
+    'Wij hebben jouw aanvraag met referentie ' + payload.configurationId +
+    ' ontvangen en zullen je contacteren. Dit is nog geen definitieve offerte.\n\n' +
+    summary.slice(0, 4500));
+  add('name', payload.customer.name);
+  add('email', payload.customer.email);
+  add('telefoon', payload.customer.phone);
+  add('bedrijf', payload.customer.company ?? '');
+  add('postcode_en_plaats', payload.customer.location ?? '');
+  add('bestelwagen', payload.vehicle.customerDescription ?? '');
+  add('referentie', payload.configurationId);
+  add('gekozen_onderdelen_en_montage', summary);
+  add('opmerkingen', payload.customer.remarks ?? '');
+  add('privacytoestemming', payload.privacyConsent ? 'Ja' : 'Nee');
+  attach('eindfoto', photo);
+  attach('volledige_configuratie', json);
+  document.body.appendChild(form);
+  HTMLFormElement.prototype.submit.call(form);
+}
+
 
 const initialForm: FormState = {
   vehicleDescription: '',
@@ -74,15 +145,9 @@ export default function QuoteForm({ onClose }: Props) {
     payload: QuotePayload;
     summary: string;
     message: string;
-    mode: 'email' | 'local';
   } | null>(null);
   const [copied, setCopied] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileReset, setTurnstileReset] = useState(0);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [failedPayload, setFailedPayload] = useState<QuotePayload | null>(null);
-  const pendingAttempt = useRef<{ signature: string; payload: QuotePayload } | null>(null);
-  const turnstileSiteKey = import.meta.env.VITE_QUOTE_TURNSTILE_SITE_KEY as string | undefined;
   const [preview, setPreview] = useState<{ key: string; image: string | null } | null>(null);
   const previewKey = JSON.stringify(configuration);
   useEffect(() => {
@@ -113,48 +178,44 @@ export default function QuoteForm({ onClose }: Props) {
     if (Object.keys(errs).length > 0) return;
 
     setSubmissionError(null);
-    setFailedPayload(null);
-    if (quoteEmailConfigured && !turnstileToken) {
-      setSubmissionError('Voltooi eerst de beveiligingscontrole.');
-      return;
-    }
     setSubmitting(true);
     try {
-      // Preserve reference and exact image across retries for Resend idempotency.
-      const signature = JSON.stringify({ configuration, form });
-      let finalPayload: QuotePayload;
-      if (pendingAttempt.current?.signature === signature) {
-        finalPayload = pendingAttempt.current.payload;
-      } else {
-        const configurationId = generateConfigurationId();
-        const createdAt = new Date().toISOString();
-        const customerPayload = {
-          name: form.name.trim(),
-          company: form.company.trim() || undefined,
-          email: form.email.trim(),
-          phone: form.phone.trim(),
-          location: form.location.trim() || undefined,
-          remarks: form.remarks.trim() || undefined,
-        };
-        const weight = buildSnapshot().estimatedWaterWeightKg;
-        const previewImageDataUrl = await summaryImage(configuration, configurationId, form.vehicleDescription.trim());
-        finalPayload = buildQuotePayload({
-          configurationId, createdAt, customer: customerPayload,
-          vehicleDescription: form.vehicleDescription.trim(), configuration,
-          previewImageDataUrl, pricing, estimatedWaterWeightKg: weight,
-          layoutWarnings: layout.warnings, privacyConsent: form.privacyConsent,
-        });
-        pendingAttempt.current = { signature, payload: finalPayload };
-      }
+      const configurationId = generateConfigurationId();
+      const createdAt = new Date().toISOString();
+      const customerPayload = {
+        name: form.name.trim(),
+        company: form.company.trim() || undefined,
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        location: form.location.trim() || undefined,
+        remarks: form.remarks.trim() || undefined,
+      };
+
+      const weight = buildSnapshot().estimatedWaterWeightKg;
+      const previewImageDataUrl = await summaryImage(configuration, configurationId, form.vehicleDescription.trim());
+      const finalPayload = buildQuotePayload({
+        configurationId,
+        createdAt,
+        customer: customerPayload,
+        vehicleDescription: form.vehicleDescription.trim(),
+        configuration,
+        previewImageDataUrl,
+        pricing,
+        estimatedWaterWeightKg: weight,
+        layoutWarnings: layout.warnings,
+        privacyConsent: form.privacyConsent,
+      });
 
       const summary = formatQuoteSummary(finalPayload);
-      const submitResult = await submitQuoteRequest(finalPayload, turnstileToken, quoteEmailConfigured ? quoteEmailEndpoint : undefined);
-      if (!submitResult.ok) {
-        setSubmissionError(submitResult.error);
-        setFailedPayload(finalPayload);
-        setTurnstileReset(value => value + 1);
+      if (FORM_SUBMIT_RECIPIENT) {
+        // Save the quote locally as a fallback before leaving for FormSubmit's
+        // own reCAPTCHA / one-time Hotmail address-activation flow.
+        const prepared = await submitQuoteRequest(finalPayload);
+        if (!prepared.ok) throw new Error(prepared.error);
+        deliverThroughFormSubmit(finalPayload, summary);
         return;
       }
+      const submitResult = await submitQuoteRequest(finalPayload);
 
       const legacyCustomer: Customer = {
         firstName: form.name.trim().split(/\s+/)[0] || form.name.trim(),
@@ -170,9 +231,10 @@ export default function QuoteForm({ onClose }: Props) {
       setResult({
         payload: finalPayload,
         summary,
-        message: submitResult.message,
-        mode: submitResult.mode,
+        message: submitResult.ok ? submitResult.message : submitResult.error,
       });
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : 'De verzending kon niet worden gestart. Probeer opnieuw.');
     } finally {
       setSubmitting(false);
     }
@@ -198,7 +260,7 @@ export default function QuoteForm({ onClose }: Props) {
               <Check size={20} className="text-[var(--accent)]" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg text-[var(--text-primary)]">{result.mode === 'email' ? 'Offerteaanvraag verzonden' : 'Configuratie lokaal voorbereid'}</h3>
+              <h3 className="font-semibold text-lg text-[var(--text-primary)]">Configuratie voorbereid</h3>
               <p className="mt-1 text-sm text-[var(--text-secondary)] leading-relaxed">{result.message}</p>
               <p className="mt-3 text-sm">
                 <span className="text-[var(--text-muted)]">Referentie: </span>
@@ -251,7 +313,7 @@ export default function QuoteForm({ onClose }: Props) {
         )}
 
         <p className="text-xs text-[var(--text-muted)] text-center">
-          {quoteEmailConfigured ? 'Dit is een ontvangstbevestiging en nog geen definitieve offerte.' : 'Er is geen e-mail verzonden. Deel de referentie of samenvatting via WhatsApp of telefoon.'}
+          Dit overzicht is lokaal voorbereid. Er werd vanuit deze ontwikkelomgeving geen e-mail verstuurd.
         </p>
       </div>
     );
@@ -271,9 +333,9 @@ export default function QuoteForm({ onClose }: Props) {
           alt="Jouw geselecteerde apparatuur samen op één installatieframe" className="w-full max-h-64 object-contain bg-[#aeb3b6]" />
           : <p className="p-4 text-sm text-[var(--warning)]">De 3D-afbeelding kon niet worden gemaakt. De onderdelenlijst blijft beschikbaar.</p>)
           : <p className="p-4 text-sm text-[var(--text-secondary)]" role="status">Afbeelding van jouw installatie wordt gemaakt…</p>}
-        <p className="p-3 text-xs text-[var(--text-muted)]">{quoteEmailConfigured
-          ? 'Na verzending ontvang jij per e-mail deze eindfoto en je gekozen onderdelen. RS Car Detailing ontvangt de volledige aanvraag.'
-          : 'Je kunt de eindfoto en je selectie bewaren. Automatische e-mail wordt geactiveerd zodra de maildienst gekoppeld is.'}</p>
+        <p className="p-3 text-xs text-[var(--text-muted)]">{FORM_SUBMIT_RECIPIENT
+          ? 'De eindfoto en volledige selectie worden als bijlagen naar de beheerder verzonden. De klant krijgt een automatische tekstbevestiging met onderdelenlijst (zonder foto-bijlage). Na de knop volgt een beveiligingscontrole van FormSubmit; bij het eerste gebruik moet het ontvangstadres eenmalig worden geactiveerd.'
+          : 'Je kunt deze aanvraag en eindfoto bewaren. Verzending is in deze ontwikkelomgeving niet actief.'}</p>
       </div>
 
       <div className="rounded-lg border border-[var(--accent-muted)] bg-[var(--accent-soft)] p-3">
@@ -419,21 +481,10 @@ export default function QuoteForm({ onClose }: Props) {
         </p>
       )}
 
-      {quoteEmailConfigured && turnstileSiteKey && (
-        <QuoteTurnstile sitekey={turnstileSiteKey} onToken={setTurnstileToken} resetSignal={turnstileReset} />
-      )}
-      {submissionError && (
-        <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-300">
-          <p>{submissionError}</p>
-          {failedPayload && <div className="flex flex-wrap gap-2">
-            <a className="btn-secondary btn-sm" download={failedPayload.configurationId + '.json'} href={'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(failedPayload, null, 2))}>Aanvraag bewaren</a>
-            {failedPayload.previewImageDataUrl && <a className="btn-secondary btn-sm" download={failedPayload.configurationId + '.jpg'} href={failedPayload.previewImageDataUrl}>Eindfoto bewaren</a>}
-          </div>}
-        </div>
-      )}
+      {submissionError && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">{submissionError}</p>}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <button type="submit" className="btn-primary flex-1 justify-center" disabled={submitting}>
-          {submitting ? 'Verzenden…' : quoteEmailConfigured ? 'Offerteaanvraag verzenden' : 'Aanvraag lokaal voorbereiden'}
+          {submitting ? 'Bezig…' : FORM_SUBMIT_RECIPIENT ? 'Offerteaanvraag versturen' : 'Aanvraag voorbereiden'}
         </button>
         {onClose && (
           <button type="button" onClick={onClose} className="btn-ghost">
