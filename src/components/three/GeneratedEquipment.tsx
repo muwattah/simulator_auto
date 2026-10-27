@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import type { PlacedItem } from '../../types';
 
 export const generatedModelFor = (id: string) => {
-  if (id.startsWith('pressure_reel_') || id.startsWith('power_reel_') || id.startsWith('air_reel_')) return 'reel';
+  if (id.startsWith('pressure_reel_') || id.startsWith('air_reel_')) return 'reel';
   if (id.startsWith('generator_')) return 'generator';
   if (id === 'pressure_electric') return 'washer';
   return null;
@@ -44,7 +44,7 @@ function Model({ name, item, selected }: { name: string; item: PlacedItem; selec
     return { object, scale, offset: centre.multiplyScalar(-1), materials };
   }, [scene, selected, item.size[0], item.size[1], item.size[2]]);
   useEffect(() => () => materials.forEach(m => m.dispose()), [materials]);
-  return <group scale={scale} position={[0, name === 'reel' ? 0 : -item.size[1] / 2 + new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3()).y * scale / 2, 0]}><primitive object={object} position={offset} dispose={null} /></group>;
+  return <group name={'asset:' + item.productId} scale={scale} position={[0, name === 'reel' ? 0 : -item.size[1] / 2 + new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3()).y * scale / 2, 0]}><primitive object={object} position={offset} dispose={null} /></group>;
 }
 
 export default function GeneratedEquipment({ item, selected, onSelect }: {

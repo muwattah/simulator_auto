@@ -12,6 +12,7 @@ mkdirSync(dir, { recursive: true });
 const url = process.env.QA_URL ?? 'http://127.0.0.1:5278/simulator_auto/';
 const browser = await chromium.launch({
   headless: true,
+  ...(process.platform === 'win32' ? { channel: 'msedge' } : {}),
   // Browser CI validates layout, selections and quotes without saturating a software GPU.
   // Hardware-accelerated 3D must be visually reviewed separately.
   args: ['--disable-webgl', '--disable-3d-apis'],

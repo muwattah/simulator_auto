@@ -67,7 +67,7 @@ function zonePosition(
   }
 }
 
-function collectProducts(config: DetailingConfiguration): DetailingProduct[] {
+export function collectProducts(config: DetailingConfiguration): DetailingProduct[] {
   const ids: string[] = [];
   if (config.tankId) ids.push(config.tankId);
   if (config.pressureWasherId === 'pressure_both') {

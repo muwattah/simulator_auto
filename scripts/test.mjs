@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = resolve(root, '.test-build');
 mkdirSync(output, { recursive: true });
 writeFileSync(resolve(output, 'package.json'), '{"type":"commonjs"}\n');
-const tests = ['pricing', 'configurator'];
+const tests = ['pricing', 'configurator', 'setupPresentation'];
 const compile = spawnSync(process.execPath, [
   resolve(root, 'node_modules/typescript/bin/tsc'),
   ...tests.map(name => `src/lib/${name}.test.ts`),

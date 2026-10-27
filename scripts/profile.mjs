@@ -16,9 +16,13 @@ try {
     page.on('pageerror', e => errors.push(e.message));
     const start = Date.now();
     await page.goto(process.env.QA_URL ?? 'http://127.0.0.1:5278/simulator_auto/?qa=1');
+    await page.evaluate(async () => {
+      const { demoConfiguration } = await import(new URL('src/data/demoConfiguration.ts', location.href).href);
+      localStorage.setItem('detailing-configurator-v1', JSON.stringify({ version: 2, state: { configuration: demoConfiguration, step: 'tank', quotes: [], visitedSteps: [] } }));
+    });
+    await page.reload();
     await page.getByRole('button', { name: 'Start configureren' }).first().click();
-    await page.getByRole('button', { name: 'Laad de 3D-demo', exact: true }).click();
-    await page.waitForFunction(() => window.__rs3d?.triangles > 200000);
+    await page.waitForFunction(() => window.__rs3d?.triangles > 50000);
     const readyMs = Date.now() - start;
     await page.locator('canvas').evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
     await page.evaluate(() => window.dispatchEvent(new Event('rs-profile-start')));

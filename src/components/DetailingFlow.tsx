@@ -32,15 +32,6 @@ const KIND_LABELS: Record<string, string> = {
   frame: 'Montageframe', extra: 'Accessoires', holder: 'Houder',
 };
 
-/** Category-level reference imagery. These are NOT photos of the exact SKU. */
-function photoFor(kind: string): string {
-  if (kind === 'pressure') return 'realisations/interior-03.jpg';
-  if (['pressure_reel', 'air_reel', 'power_reel'].includes(kind)) return 'realisations/interior-02.jpg';
-  if (kind === 'generator') return 'realisations/interior-01.jpg';
-  if (kind === 'holder') return 'productfotos/hygiemeca/02_support_pinceaux_et_pulverisateurs/01.jpg';
-  if (kind === 'extra') return 'productfotos/hygiemeca/01_support_pour_brosses/01.jpg';
-  return 'realisations/workbench-01.jpg';
-}
 function chosen(c: DetailingConfiguration, p: DetailingProduct): boolean {
   switch (p.category) {
     case 'tank': return c.tankId === p.id;
@@ -86,19 +77,20 @@ function ProductCard({ item, active, onSelect }: {
   return (
     <article className={'flex min-w-0 flex-col overflow-hidden rounded-xl border transition-colors ' +
       (active ? 'border-sky-500 bg-sky-500/10' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)]')}>
-      <div className="relative h-24 overflow-hidden bg-[#11171f] sm:h-28 2xl:h-30">
+      <div className="relative h-32 overflow-hidden bg-[#11171f] sm:h-36 2xl:h-40">
         {photoFailed ? (
           <div className="flex h-full items-center justify-center text-sky-400"><Package size={34} strokeWidth={1.5} /></div>
         ) : (
-          <img src={import.meta.env.BASE_URL + photoFor(item.category)}
-            alt={'Referentiefoto voor ' + (KIND_LABELS[item.category] || 'onderdeel')}
+          <img src={import.meta.env.BASE_URL + 'product-renders/' + item.id + '.jpg'}
+            alt={'3D-voorbeeld van ' + item.name}
             onError={() => setPhotoFailed(true)} loading="lazy" decoding="async"
-            className="h-full w-full object-cover opacity-90 transition-transform duration-300 hover:scale-105" />
+            className="h-full w-full object-contain transition-transform duration-300 hover:scale-105" />
         )}
         <span className="absolute left-2 top-2 rounded-md bg-[#09101b]/85 px-2 py-1 text-[10px] font-semibold text-white">
           {KIND_LABELS[item.category] || 'Onderdeel'}
         </span>
-        <span title="Referentiefoto, geen exacte productfoto" className="absolute right-2 top-2 rounded-full bg-[#09101b]/80 p-1.5 text-white/80">
+        <span className="absolute bottom-2 left-2 rounded bg-[#09101b]/85 px-2 py-1 text-[10px] text-white">{dims}</span>
+        <span title="3D-voorbeeld, geen gecertificeerd fabrikantmodel" className="absolute right-2 top-2 rounded-full bg-[#09101b]/80 p-1.5 text-white/80">
           <Info size={14} />
         </span>
       </div>
@@ -342,7 +334,7 @@ export default function DetailingFlow() {
                   <p className="mt-3 text-xs text-[var(--text-muted)]">Kies eerst een compressor om persluchthaspels te zien.</p>
                 )}
                 <p className="mt-4 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                  Dit zijn referentiefoto’s, geen exacte productfoto’s. Maten en montage zijn voorlopig;
+                  3D-voorbeelden van de onderdelen in je installatie, geen officiële fabrikantmodellen. Maten en montage zijn voorlopig;
                   de werkelijke voertuigpassing en belading controleren we bij de offerte.
                 </p>
               </>

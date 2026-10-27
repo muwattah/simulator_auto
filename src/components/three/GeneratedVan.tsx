@@ -15,8 +15,13 @@ export default function GeneratedVan({ space, settings }: { space: CargoSpaceMet
       if (!(node instanceof THREE.Mesh)) return;
       node.castShadow = node.receiveShadow = true;
       const clone = (material: THREE.Material) => {
-        const copy = material.clone();
-        if (copy instanceof THREE.MeshStandardMaterial) copy.envMapIntensity = 0.85;
+        const copy = /automotive enamel/i.test(material.name)
+          ? new THREE.MeshPhysicalMaterial({ name: material.name, color: '#303941', metalness: 0.68, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.16, map: (material as THREE.MeshStandardMaterial).map })
+          : material.clone();
+        if (copy instanceof THREE.MeshStandardMaterial && /interior silver|cargo antislip/i.test(material.name)) {
+          copy.color.set('#313840'); copy.roughness = 0.77; copy.metalness = 0.18;
+        }
+        if (copy instanceof THREE.MeshStandardMaterial) copy.envMapIntensity = 1.1;
         materials.push(copy);
         return copy;
       };
@@ -58,7 +63,7 @@ export default function GeneratedVan({ space, settings }: { space: CargoSpaceMet
   }, [object, settings.body, settings.roofVisible]);
   useFrame(({ invalidate }, dt) => {
     for (const { pivot, side } of hinges) {
-      const target = settings.doorsOpen ? -side * 2.9 : 0;
+      const target = settings.doorsOpen ? -side * 4.45 : 0;
       if (Math.abs(pivot.rotation.y - target) < 0.001) { pivot.rotation.y = target; continue; }
       pivot.rotation.y = THREE.MathUtils.damp(pivot.rotation.y, target, 7, Math.min(dt, 0.2));
       invalidate();

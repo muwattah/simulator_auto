@@ -44,13 +44,13 @@ export default function LoadSpaceViewer() {
 
   const [mode, setMode] = useState<'3d' | '2d' | 'foto'>('3d');
   const [webglOk] = useState(supportsWebGL);
-  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('top');
+  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('overview');
   const [cameraRevision, setCameraRevision] = useState(0);
   const [zoomStep, setZoomStep] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [vanSettings, setVanSettings] = useState<VanViewSettings>({
-    body: 'transparent', roofVisible: false, doorsOpen: true,
+    body: 'solid', roofVisible: true, doorsOpen: true,
   });
 
   const effectiveMode = mode === 'foto' ? 'foto' : !webglOk ? '2d' : mode;
@@ -64,10 +64,11 @@ export default function LoadSpaceViewer() {
   const variant = getProduct(configuration.liningId)?.visual3D.variant ?? 'none';
   const heightClass = expanded
     ? 'h-[80dvh] min-h-[440px]'
-    : 'h-[335px] sm:h-[465px] lg:h-[calc(100dvh-205px)] lg:min-h-[480px] lg:max-h-[880px]';
+    : 'h-[335px] sm:h-[465px] lg:h-[min(64dvh,640px)] lg:min-h-[420px]';
 
   function chooseCamera(id: CameraPreset) {
     setMode('3d');
+    if (id === 'top') setVanSettings(s => ({ ...s, roofVisible: false }));
     setCameraPreset(id);
     setCameraRevision(v => v + 1);
   }
@@ -88,7 +89,7 @@ export default function LoadSpaceViewer() {
             </div>
           }>
             <VanScene3D
-              space={space} placements={layout.placements} liningVariant={variant}
+              space={space} placements={layout.placements} liningVariant={variant} floatValve={!!configuration.floatValve}
               selectedProductId={selectedProductId} onSelectProduct={setSelectedProductId}
               cameraPreset={cameraPreset} cameraRevision={cameraRevision} zoomStep={zoomStep}
               vanSettings={vanSettings} onCaptureReady={onCaptureReady}
@@ -160,7 +161,7 @@ export default function LoadSpaceViewer() {
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-white">
           <ZoomOut size={18} />
         </button>
-        <button type="button" aria-label="Terug naar bovenaanzicht" title="Camera resetten" onClick={() => chooseCamera('top')}
+        <button type="button" aria-label="Terug naar bovenaanzicht" title="Camera naar bovenaanzicht" onClick={() => chooseCamera('top')}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-white">
           <RotateCcw size={16} />
         </button>

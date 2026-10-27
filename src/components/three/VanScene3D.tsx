@@ -1,14 +1,17 @@
-import GeneratedVan from './GeneratedVan';
 import { useMemo, useEffect, useRef, Suspense } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Environment, Lightformer, useProgress } from '@react-three/drei';
+import { Canvas, useThree } from '@react-three/fiber';
+import { OrbitControls, ContactShadows, useProgress, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import type { CargoSpaceMeters, PlacedItem } from '../../types';
+import { setupBounds } from '../../lib/setupPresentation';
 import { ProductMeshSwitcher } from './DetailModels';
-import VanBody3D, { type VanViewSettings } from './VanBody3D';
+import { generatedModelFor } from './GeneratedEquipment';
+import GeneratedVan from './GeneratedVan';
+import StudioLighting from './StudioLighting';
+import type { VanViewSettings } from './VanBody3D';
+import { useFrame } from '@react-three/fiber';
 
 export type CameraPreset = 'overview' | 'left' | 'right' | 'rear' | 'top';
-
 interface Props {
   space: CargoSpaceMeters;
   placements: PlacedItem[];
@@ -18,164 +21,82 @@ interface Props {
   cameraPreset: CameraPreset;
   cameraRevision?: number;
   zoomStep?: number;
-  /** Studio presentation is an open equipment platform, not an exact van model. */
   presentationMode?: boolean;
+  productPreview?: boolean;
+  floatValve?: boolean;
   vanSettings?: VanViewSettings;
-  /** Receives a synchronous browser JPEG capture function once WebGL is ready. */
   onCaptureReady?: (capture: (() => string | null) | null) => void;
 }
 
-/** Texture drawn procedurally, so the simulation has no broken remote asset links. */
-function makeCheckerPlateTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 256;
+export function makeCheckerPlateTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#a1aab4';
-  ctx.fillRect(0, 0, 256, 256);
-  for (let x = -20; x < 280; x += 26) {
-    for (let y = -20; y < 280; y += 30) {
-      const offset = Math.floor(y / 30) % 2 ? 13 : 0;
-      ctx.save();
-      ctx.translate(x + offset, y);
-      ctx.rotate(-Math.PI / 4);
-      ctx.fillStyle = '#e3e8ee';
-      ctx.fillRect(-9, -2.5, 18, 4);
-      ctx.fillStyle = '#66737f';
-      ctx.fillRect(-9, 2, 18, 1.5);
-      ctx.restore();
-    }
+  ctx.fillStyle = '#89939b'; ctx.fillRect(0, 0, 256, 256);
+  for (let x = -20; x < 280; x += 26) for (let y = -20; y < 280; y += 30) {
+    ctx.save(); ctx.translate(x + (Math.floor(y / 30) % 2 ? 13 : 0), y); ctx.rotate(-Math.PI / 4);
+    ctx.fillStyle = '#d0d7dc'; ctx.fillRect(-9, -2.5, 18, 4);
+    ctx.fillStyle = '#59656e'; ctx.fillRect(-9, 2, 18, 1.5); ctx.restore();
   }
   const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(4, 3);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(5, 7);
+  texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 8;
   return texture;
 }
 
-function CargoShell({
-  space,
-  liningVariant,
-  presentationMode = false,
-}: {
-  space: CargoSpaceMeters;
-  liningVariant: string;
-  presentationMode?: boolean;
-}) {
-  const { length: L, width: W, height: H } = space;
-  const isAlu = liningVariant === 'aluminium';
-  const isFabric = liningVariant === 'fabric';
-  const treadTexture = useMemo(makeCheckerPlateTexture, []);
-  useEffect(() => () => treadTexture.dispose(), [treadTexture]);
-
-  const sideMaterial = useMemo(
-    () => new THREE.MeshStandardMaterial({
-      color: isAlu ? '#aab4bf' : isFabric ? '#323942' : '#b5c0c9',
-      metalness: isAlu ? 0.72 : 0.27,
-      roughness: 0.48,
-      transparent: true,
-      opacity: 0.22,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    }), [isAlu, isFabric],
-  );
-  const floorMaterial = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#262d35', roughness: 0.53, metalness: 0.38 }),
-    [],
-  );
-  const backMaterial = useMemo(
-    () => new THREE.MeshStandardMaterial({
-      color: '#e3e7ed',
-      map: treadTexture,
-      roughness: 0.38,
-      metalness: 0.68,
-      side: THREE.DoubleSide,
-    }), [treadTexture],
-  );
-
-  return (
-    <group>
-      {/* Steel skid: the configured installation stays visible from the rear. */}
-      <mesh position={[0, -0.09, 0]} receiveShadow castShadow material={floorMaterial}>
-        <boxGeometry args={[W + 0.18, 0.18, L + 0.16]} />
-      </mesh>
-      <mesh position={[0, 0.007, 0]} receiveShadow>
-        <boxGeometry args={[W, 0.019, L]} />
-        <meshStandardMaterial color={isAlu ? '#aeb8bf' : '#414b56'} metalness={0.55} roughness={0.48} />
-      </mesh>
-      {[-1, 1].map((side) => (
-        <mesh key={'platform' + side} position={[side * (W + 0.12) / 2, -0.03, 0]} castShadow>
-          <boxGeometry args={[0.055, 0.12, L + 0.18]} />
-          <meshStandardMaterial color="#11171d" metalness={0.75} roughness={0.28} />
-        </mesh>
-      ))}
-      <mesh position={[0, -0.03, -L / 2 - 0.085]}>
-        <boxGeometry args={[W + 0.12, 0.12, 0.05]} />
-        <meshStandardMaterial color="#11171d" metalness={0.8} roughness={0.24} />
-      </mesh>
-
-      {/* Rear wall/panel in studio mode; open and ghosted walls in van mode. */}
-      <mesh position={[0, H * 0.46, L / 2 - 0.018]} receiveShadow material={backMaterial}>
-        <boxGeometry args={[W * 0.9, H * 0.92, 0.035]} />
-      </mesh>
-      {[-1, 1].map(side => (
-        <mesh key={'upright-' + side} position={[side * W * 0.47, H * 0.5, L / 2 - 0.045]} castShadow>
-          <boxGeometry args={[0.058, H, 0.07]} />
-          <meshStandardMaterial color="#13191e" metalness={0.75} roughness={0.34} />
-        </mesh>
-      ))}
-      <mesh position={[0, H, L / 2 - 0.05]} castShadow>
-        <boxGeometry args={[W, 0.058, 0.07]} />
-        <meshStandardMaterial color="#121820" metalness={0.75} roughness={0.34} />
-      </mesh>
-
-      {!presentationMode && (
-        <>
-          {[-1, 1].map(side => (
-            <mesh key={'wall-' + side} position={[side * W / 2, H / 2, 0]} material={sideMaterial}>
-              <boxGeometry args={[0.028, H, L]} />
-            </mesh>
-          ))}
-          <mesh position={[0, H + 0.015, 0]}>
-            <boxGeometry args={[W, 0.028, L]} />
-            <meshStandardMaterial color="#9da7b3" transparent opacity={0.09} depthWrite={false} side={THREE.DoubleSide} />
-          </mesh>
-          {[-1, 1].map(side => (
-            <mesh key={'wheel-' + side} position={[side * (W / 2 - 0.16), 0.20, -L * 0.09]}>
-              <boxGeometry args={[0.32, 0.35, 0.65]} />
-              <meshStandardMaterial color="#4b5563" metalness={0.25} roughness={0.8} />
-            </mesh>
-          ))}
-        </>
-      )}
-    </group>
-  );
+function Platform({ space, items, studio, lining }: { space: CargoSpaceMeters; items: PlacedItem[]; studio: boolean; lining: string }) {
+  const bounds = useMemo(() => setupBounds(items), [items]);
+  const tread = useMemo(makeCheckerPlateTexture, []);
+  useEffect(() => () => tread.dispose(), [tread]);
+  const width = studio ? bounds.size[0] + 0.16 : space.width;
+  const depth = studio ? bounds.size[2] + 0.16 : space.length;
+  const center: [number, number, number] = studio ? [bounds.center[0], -0.045, bounds.center[2]] : [0, -0.022, 0];
+  return <group position={center} name={studio ? 'presentation-skid' : 'cargo-lining'}>
+    <RoundedBox args={[width, studio ? 0.09 : 0.035, depth]} radius={0.015} smoothness={2} receiveShadow castShadow>
+      <meshStandardMaterial color={lining === 'aluminium' ? '#a3adb5' : '#292f35'}
+        map={lining === 'aluminium' ? tread : null} roughness={lining === 'aluminium' ? 0.36 : 0.87} metalness={lining === 'aluminium' ? 0.72 : 0.08} />
+    </RoundedBox>
+    {studio && [-1, 1].map(side => <mesh key={side} position={[side * width / 2, 0, 0]} castShadow>
+      <boxGeometry args={[0.025, 0.11, depth]} /><meshStandardMaterial color="#151b20" metalness={0.7} roughness={0.32} />
+    </mesh>)}
+  </group>;
 }
 
-function CameraController({ preset, space, presentationMode, revision = 0 }: {
-  preset: CameraPreset; space: CargoSpaceMeters; presentationMode: boolean; revision?: number;
-}) {
-  const camera = useThree(s => s.camera);
+function CameraController({ props }: { props: Props }) {
+  const { camera, invalidate, size } = useThree();
   const controls = useThree(s => s.controls) as { target: THREE.Vector3; update: () => void } | null;
-  const { length: L, width: W, height: H } = space;
+  const { length: L, width: W, height: H } = props.space;
+  const boundsKey = JSON.stringify(props.placements.map(i => [i.position, i.size]));
   useEffect(() => {
-    const targets: Record<CameraPreset, { pos: [number, number, number]; look: [number, number, number] }> = {
-      rear: { pos: [0, H * 0.7, -L * 1.4], look: [0, H * 0.34, -L * 0.25] },
-      overview: {
-        pos: [W * (presentationMode ? 2.5 : 2.05), H * 1.32, -L * 1.3],
-        look: [0, H * 0.41, L * 0.12],
-      },
-      left: { pos: [-W * 3.8, H * 1.0, L * 0.28], look: [0, H * 0.40, L * 0.28] },
-      right: { pos: [W * 3.8, H * 1.0, L * 0.28], look: [0, H * 0.40, L * 0.28] },
-      top: { pos: [0.001, L * 2.8, L * 0.28], look: [0, 0, L * 0.28] },
-    };
-    const next = targets[preset];
-    camera.position.set(...next.pos);
-    if (controls) {
-      controls.target.set(...next.look);
-      controls.update();
-    } else camera.lookAt(...next.look);
-  }, [preset, L, W, H, camera, controls, presentationMode, revision]);
+    let pos: number[], look: number[];
+    if (props.presentationMode || props.productPreview) {
+      const b = setupBounds(props.placements);
+      const radius = new THREE.Vector3(...b.size).length() / 2;
+      const fov = (camera as THREE.PerspectiveCamera).fov * Math.PI / 180;
+      const fit = Math.min(fov, 2 * Math.atan(Math.tan(fov / 2) * size.width / size.height));
+      const distance = Math.max(0.6, radius / Math.sin(fit / 2) * (props.productPreview ? 1.18 : 1.04));
+      const direction = new THREE.Vector3(1.15, 0.82, -1.45).normalize().multiplyScalar(distance);
+      look = b.center; pos = direction.add(new THREE.Vector3(...look)).toArray();
+    } else {
+      const presets = {
+        rear: { pos: [0, H * 0.75, -L * 1.55], look: [0, H * 0.45, -L * 0.25] },
+        overview: { pos: [W * 1.9, H * 1.2, -L * 1.9], look: [0, H * 0.4, 0.25] },
+        left: { pos: [-W * 3.8, H, L * 0.28], look: [0, H * 0.4, L * 0.28] },
+        right: { pos: [W * 3.8, H, L * 0.28], look: [0, H * 0.4, L * 0.28] },
+        top: { pos: [0.001, L * 2.8, L * 0.28], look: [0, 0, L * 0.28] },
+      };
+      ({ pos, look } = presets[props.cameraPreset]);
+      // Portrait viewports need more distance to contain the complete van.
+      if (size.width / size.height < 1.3 && props.cameraPreset === 'overview') {
+        const target = new THREE.Vector3(...look);
+        pos = new THREE.Vector3(...pos).sub(target).multiplyScalar(Math.max(1, 1.3 / (size.width / size.height))).add(target).toArray();
+      }
+    }
+    camera.position.set(pos[0], pos[1], pos[2]);
+    if (controls) { controls.target.set(look[0], look[1], look[2]); controls.update(); }
+    else camera.lookAt(look[0], look[1], look[2]);
+    invalidate();
+  }, [props.cameraPreset, props.cameraRevision, props.presentationMode, props.productPreview,
+    props.presentationMode || props.productPreview ? boundsKey : '', L, W, H, size.width, size.height, camera, controls, invalidate]);
   return null;
 }
 
@@ -184,35 +105,28 @@ function ZoomController({ step = 0 }: { step?: number }) {
   const controls = useThree(s => s.controls) as { target: THREE.Vector3; update: () => void } | null;
   const previous = useRef(step);
   useEffect(() => {
-    const delta = step - previous.current;
-    previous.current = step;
+    const delta = step - previous.current; previous.current = step;
     if (!controls || !delta) return;
     const offset = camera.position.clone().sub(controls.target);
-    const distance = THREE.MathUtils.clamp(offset.length() * Math.pow(0.82, delta), 1.2, 24);
-    camera.position.copy(controls.target).add(offset.setLength(distance));
+    camera.position.copy(controls.target).add(offset.setLength(THREE.MathUtils.clamp(offset.length() * Math.pow(0.82, delta), 0.4, 24)));
     controls.update(); invalidate();
   }, [step, camera, controls, invalidate]);
   return null;
 }
 
-function CaptureBridge({ onCaptureReady }: {
-  onCaptureReady: (capture: (() => string | null) | null) => void;
-}) {
+function CaptureBridge({ ready, items }: { ready: NonNullable<Props['onCaptureReady']>; items: PlacedItem[] }) {
   const { gl, scene, camera } = useThree();
+  const ids = items.map(i => i.productId).join();
   useEffect(() => {
-    const capture = (): string | null => {
-      try {
-        if (useProgress.getState().active || useProgress.getState().errors.length) return null;
-        gl.render(scene, camera);
-        const image = gl.domElement.toDataURL('image/jpeg', 0.92);
-        return image.startsWith('data:image/jpeg;base64,') ? image : null;
-      } catch {
-        return null;
-      }
+    const capture = () => {
+      const equipment = scene.getObjectByName('configured-equipment');
+      if (useProgress.getState().active || equipment?.children.length !== items.length) return null;
+      for (const item of items) if (generatedModelFor(item.productId) && !scene.getObjectByName('asset:' + item.productId)) return null;
+      try { gl.render(scene, camera); return gl.domElement.toDataURL('image/jpeg', 0.92); }
+      catch { return null; }
     };
-    onCaptureReady(capture);
-    return () => onCaptureReady(null);
-  }, [gl, scene, camera, onCaptureReady]);
+    ready(capture); return () => ready(null);
+  }, [gl, scene, camera, ready, ids]);
   return null;
 }
 
@@ -249,66 +163,39 @@ function RendererMetrics() {
 
 function SceneContent(props: Props) {
   const loading = useProgress(s => s.active);
-  const {
-    space, placements, liningVariant, selectedProductId, onSelectProduct,
-    cameraPreset, presentationMode = false, onCaptureReady, vanSettings,
-  } = props;
-  return (
-    <>
-      <RendererMetrics />
-      <color attach="background" args={[presentationMode ? '#242b33' : '#151c26']} />
-      <Environment resolution={128} frames={1}>
-        <Lightformer intensity={3} position={[0, 6, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[8, 4, 1]} />
-        <Lightformer intensity={2} position={[-5, 2, 0]} rotation={[0, Math.PI / 2, 0]} scale={[6, 3, 1]} />
-        <Lightformer intensity={2} position={[4, 3, -4]} rotation={[0, -Math.PI / 4, 0]} scale={[3, 5, 1]} />
-      </Environment>
-      <hemisphereLight intensity={1.35} color="#e6f2ff" groundColor="#344350" />
-      <ambientLight intensity={0.65} />
-      <directionalLight position={[3.5, 7, -5]} intensity={2.3} castShadow
-        shadow-mapSize-width={1024} shadow-mapSize-height={1024}
-        shadow-bias={-0.0002} />
-      <directionalLight position={[-5, 3.5, 2.5]} color="#a6d8ff" intensity={1.0} />
-      <directionalLight position={[0, 4.2, 6]} color="#ffebd5" intensity={1.2} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.64, 0]} receiveShadow>
-        <planeGeometry args={[80, 80]} />
-        <meshStandardMaterial color="#222932" roughness={0.74} metalness={0.04} />
-      </mesh>
-      <CargoShell space={space} liningVariant={liningVariant} presentationMode={presentationMode} />
-      {space.vehicleCategory === 'trailer' ? <VanBody3D
-        space={space}
-        settings={vanSettings ?? {
-          body: 'transparent',
-          roofVisible: true,
-          doorsOpen: true,
-        }}
-      /> : <Suspense fallback={null}><GeneratedVan space={space} settings={vanSettings ?? { body: 'transparent', roofVisible: true, doorsOpen: true }} /></Suspense>}
-      {placements.map(item => (
-        <ProductMeshSwitcher
-          key={item.productId}
-          item={item}
-          selected={selectedProductId === item.productId}
-          onSelect={() => onSelectProduct(selectedProductId === item.productId ? null : item.productId)}
-        />
-      ))}
-      <ContactShadows key={placements.map(i => i.productId).join() + loading} frames={1} position={[0, -0.63, 0]} opacity={0.42} scale={12} blur={2.3} far={4} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.08}
-        minDistance={1.2} maxDistance={24} maxPolarAngle={Math.PI * 0.49}
-        />
-      <CameraController preset={cameraPreset} space={space} presentationMode={presentationMode} revision={props.cameraRevision} />
-      <ZoomController step={props.zoomStep} />
-      {onCaptureReady && <CaptureBridge onCaptureReady={onCaptureReady} />}
-    </>
-  );
+  const studio = Boolean(props.presentationMode), product = Boolean(props.productPreview);
+  const floor = studio ? -0.10 : product ? -0.012 : -0.64 * props.space.height / 2.009;
+  return <>
+    {!studio && !product && <RendererMetrics />}
+    <StudioLighting light={studio} floorY={floor} room={!product} />
+    {!product && <Platform space={props.space} items={props.placements} studio={studio} lining={props.liningVariant} />}
+    {!studio && !product && <Suspense fallback={null}>
+      <GeneratedVan space={props.space} settings={props.vanSettings ?? { body: 'solid', roofVisible: true, doorsOpen: true }} />
+    </Suspense>}
+    <group name="configured-equipment">
+      {props.placements.map(item => <group key={item.productId} name={'product:' + item.productId}>
+        <ProductMeshSwitcher item={item} selected={props.selectedProductId === item.productId}
+          onSelect={() => props.onSelectProduct(props.selectedProductId === item.productId ? null : item.productId)} />
+        {props.floatValve && item.productId.startsWith('tank_') && <group position={[item.position[0] + item.size[0] * .48, item.position[1] + item.size[1] * .3, item.position[2]]}>
+          <mesh rotation={[0,0,Math.PI/2]} castShadow><cylinderGeometry args={[.022,.022,.07,16]} /><meshStandardMaterial color="#b8964e" metalness={.85} roughness={.28} /></mesh>
+          <mesh position={[.045,0,0]}><boxGeometry args={[.015,.065,.015]} /><meshStandardMaterial color="#b8964e" metalness={.85} roughness={.28} /></mesh>
+          <mesh position={[.045,.035,0]}><boxGeometry args={[.06,.012,.018]} /><meshStandardMaterial color="#bc3025" /></mesh>
+        </group>}
+      </group>)}
+    </group>
+    <ContactShadows key={props.placements.map(i => i.productId).join() + loading} frames={1}
+      position={[0, floor + 0.002, 0]} opacity={studio ? 0.58 : 0.42} scale={12} blur={2.2} far={4} resolution={256} />
+    <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={product ? 0.25 : 1.2} maxDistance={24} maxPolarAngle={Math.PI * 0.49} />
+    <CameraController props={props} /><ZoomController step={props.zoomStep} />
+    {props.onCaptureReady && <CaptureBridge ready={props.onCaptureReady} items={props.placements} />}
+  </>;
 }
-
 export default function VanScene3D(props: Props) {
-  return (
-    <Canvas shadows frameloop="demand" dpr={[1, 1.5]}
-      camera={{ position: [0, 1.7, -4], fov: 42, near: 0.1, far: 80 }}
-      gl={{ antialias: true, preserveDrawingBuffer: Boolean(props.onCaptureReady), powerPreference: 'high-performance' }}
-      onPointerMissed={() => props.onSelectProduct(null)}
-      style={{ width: '100%', height: '100%', touchAction: 'none' }}>
-      <Suspense fallback={null}><SceneContent {...props} /></Suspense>
-    </Canvas>
-  );
+  return <Canvas shadows frameloop="demand" dpr={props.presentationMode || props.productPreview ? 1 : [1, 1.5]}
+    camera={{ position: [0, 1.7, -5], fov: 40, near: 0.05, far: 80 }}
+    gl={{ antialias: true, preserveDrawingBuffer: Boolean(props.onCaptureReady), powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping }}
+    onPointerMissed={() => props.onSelectProduct(null)}
+    style={{ width: '100%', height: '100%', touchAction: 'none' }}>
+    <Suspense fallback={null}><SceneContent {...props} /></Suspense>
+  </Canvas>;
 }
