@@ -382,7 +382,7 @@ export const products: DetailingProduct[] = [
     name: 'Bottle holder set',
     description: 'Houder voor detailingflessen.',
     dimensions: { width: 0.35, height: 0.4, depth: 0.12 },
-    placement: { preferredZone: 'leftRearDoor', allowedZones: ['leftRearDoor', 'rightRearDoor', 'leftWall'], priority: 40 },
+    placement: { preferredZone: 'leftRearDoor', allowedZones: ['leftRearDoor', 'rightRearDoor', 'rightSideAccess', 'leftWall'], priority: 40 },
     compatibility: {},
     visual3D: { type: 'bottleHolder', width: 0.35, height: 0.4, depth: 0.12, isDemoAsset: true },
   }),
@@ -393,10 +393,21 @@ export const products: DetailingProduct[] = [
     name: 'Bucket holder set',
     description: 'Emmerhouder.',
     dimensions: { width: 0.35, height: 0.25, depth: 0.35 },
-    placement: { preferredZone: 'rightRearDoor', allowedZones: ['rightRearDoor', 'leftRearDoor', 'floor'], priority: 42 },
+    placement: { preferredZone: 'rightRearDoor', allowedZones: ['rightRearDoor', 'leftRearDoor', 'rightSideAccess', 'floor'], priority: 42 },
     compatibility: {},
     visual3D: { type: 'bucketHolder', width: 0.35, height: 0.25, depth: 0.35, isDemoAsset: true },
   }),
+
+  ...[
+    { id: 'door_spray_rack', name: 'Deurrek voor sprayflessen', variant: 'spray', width: .55, height: .31, depth: .14 },
+    { id: 'door_brush_rack', name: 'Deurrek voor borstels en aerosols', variant: 'brush', width: .55, height: .20, depth: .12 },
+    { id: 'door_gun_holder', name: 'Houder voor hogedrukpistool', variant: 'gun', width: .28, height: .38, depth: .12 },
+  ].map(v => P({ id: v.id, sku: v.id.toUpperCase(), category: 'extra', name: v.name,
+    description: 'Montage op achterdeur of de vaste zijwand tegenover de schuifdeur, geïnspireerd op RS-realisaties. Montage en sluitruimte controleren we vóór de offerte.',
+    dimensions: { width:v.width, height:v.height, depth:v.depth },
+    placement: { preferredZone:'leftRearDoor', allowedZones:['leftRearDoor','rightRearDoor','rightSideAccess'], priority:45 },
+    compatibility: {}, visual3D: { type:'doorRack', variant:v.variant, isDemoAsset:true },
+  })),
 
   // Extra sets
   P({

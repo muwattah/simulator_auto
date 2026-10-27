@@ -1,3 +1,4 @@
+import { canMountOnDoor, doorFor, isDoorZone, placedSize } from './doorMounts';
 import type {
   DetailingConfiguration,
   CargoSpaceMeters,
@@ -43,11 +44,11 @@ function zonePosition(
     case 'rearFrame.middleRight':
       return [W * 0.32, H * 0.42, rearZ + 0.05];
     case 'rearFrame.lowerLeft':
-      return [-W * 0.28, yMid, rearZ + 0.05];
+      return [-W * 0.23, yMid, rearZ + 0.25];
     case 'rearFrame.lowerCenter':
       return [0, yMid, midZ];
     case 'rearFrame.lowerRight':
-      return [W * 0.28, yMid, rearZ + 0.05];
+      return [W * 0.23, yMid, rearZ + 0.25];
     case 'leftWall':
       return [-W / 2 + sw / 2 + 0.04, yMid, midZ];
     case 'rightWall':
@@ -96,6 +97,10 @@ export function getCargoSpace(
   roofVariant: DetailingConfiguration['vehicleRoof'] = 'standard',
   modelId?: string | null,
 ): CargoSpaceMeters {
+  // Ford L1H1 published cargo length/width; 1.405 m is a conservative visual height, not certified CAD.
+  if (vehicleCategory === 'medium' && cabType === 'single' && !modelId && lengthVariant === 'standard' && roofVariant === 'standard') {
+    return { length:2.602, width:1.777, height:1.405, isDemo:true, vehicleCategory, cabType };
+  }
   const cat = getVehicleCategory(vehicleCategory);
   if (!cat) {
     return { length: 2.9, width: 1.7, height: 1.4, isDemo: true, vehicleCategory: null, cabType: null };
@@ -138,7 +143,7 @@ export function computeLayout(config: DetailingConfiguration): LayoutResult {
     placements.push({
       productId: frame.id,
       zone: 'rearFrame.middleCenter',
-      position: [0, size[1] / 2, -space.length / 2 + 0.55],
+      position: [0, size[1] / 2, -space.length / 2 + 0.70],
       size,
     });
   }
@@ -173,7 +178,7 @@ export function computeLayout(config: DetailingConfiguration): LayoutResult {
       position: [
         (reelSlot % 3 - (Math.min(reels.length, 3) - 1) / 2) * ((frame?.dimensions.width ?? space.width) / 3),
         (frame?.dimensions.height ?? space.height * 0.8) * (reelSlot < 3 ? 0.78 : 0.43),
-        -space.length / 2 + 0.55 - (frame?.dimensions.depth ?? 0.38) / 2 - size[2] / 2,
+        -space.length / 2 + 0.70 - (frame?.dimensions.depth ?? 0.38) / 2 - size[2] / 2,
       ],
       size,
       slotIndex: reelSlot,
@@ -200,7 +205,8 @@ export function computeLayout(config: DetailingConfiguration): LayoutResult {
   );
 
   let floorSlot = 0;
-  for (const prod of rest) {
+  const doorHeights = { leftRearDoor: .16, rightRearDoor: .16, rightSideAccess: .82 };
+  for (const prod of [...rest].sort((a,b)=>Number(canMountOnDoor(b))-Number(canMountOnDoor(a)))) {
     const size: [number, number, number] = [
       prod.dimensions.width,
       prod.dimensions.height,
@@ -215,6 +221,23 @@ export function computeLayout(config: DetailingConfiguration): LayoutResult {
       requiresInstallerReview = true;
     }
 
+    if (canMountOnDoor(prod)) {
+      const door = doorFor(config, prod);
+      const base = doorHeights[door];
+      const side = door === 'rightSideAccess';
+      if (size[0] > (side ? 1.03 : .65) || base + size[1] > Math.min(space.height - .08, 1.25)) {
+        warnings.push(`${prod.name}: past niet op de gekozen deur; kies een andere montageplek.`);
+        continue;
+      }
+      placements.push({ productId:prod.id, zone:door, size,
+        position: side ? [space.width/2 - size[2]/2 - .025, base+size[1]/2, space.length/2-.62]
+          : [(door === 'leftRearDoor' ? 1 : -1)*.35, base+size[1]/2, -space.length/2+size[2]/2+.065],
+        rotationY: side ? Math.PI/2 : Math.PI,
+      });
+      doorHeights[door] += size[1]+.055;
+      continue;
+    }
+
     let zone = prod.placement.preferredZone;
     if (occupied.has(zone) || zone.startsWith('rearFrame.upper')) {
       const alt = prod.placement.allowedZones.find((z) => !occupied.has(z) && z !== 'any');
@@ -225,9 +248,9 @@ export function computeLayout(config: DetailingConfiguration): LayoutResult {
       // Find a real free floor position. Never move through or resize another product.
       let freePosition: [number, number, number] | undefined;
       for (let z = -space.length / 2 + size[2] / 2 + 0.1; z <= space.length / 2 - size[2] / 2 - 0.05 && !freePosition; z += 0.1) {
-        for (const x of [-space.width / 2 + size[0] / 2 + 0.06, space.width / 2 - size[0] / 2 - 0.06, 0]) {
+        for (const x of [-space.width / 2 + size[0] / 2 + 0.06, space.width / 2 - size[0] / 2 - 0.06, -Math.max(0,(space.width-.48-size[0])/2-.03), Math.max(0,(space.width-.48-size[0])/2-.03), 0]) {
           const candidate: [number, number, number] = [x, size[1] / 2 + 0.02, z];
-          const overlaps = [...placements.filter(p => getProduct(p.productId)?.category !== 'frame'), ...wheelHousings].some(p => candidate.every((v, axis) => Math.abs(v - p.position[axis]) < (size[axis] + p.size[axis]) / 2 + 0.03));
+          const overlaps = [...placements.filter(p => getProduct(p.productId)?.category !== 'frame'), ...wheelHousings].some(p => candidate.every((v, axis) => Math.abs(v - p.position[axis]) < (size[axis] + placedSize(p)[axis]) / 2 + 0.03));
           if (!overlaps) { freePosition = candidate; break; }
         }
       }
@@ -268,8 +291,8 @@ export function computeLayout(config: DetailingConfiguration): LayoutResult {
   for (const item of placements) {
     const p = getProduct(item.productId)!;
     const [x, y, z] = item.position;
-    const [w, h, d] = item.size;
-    if (!item.zone.endsWith('RearDoor') && (
+    const [w, h, d] = placedSize(item);
+    if (!isDoorZone(item.zone) && (
       Math.abs(x) + w / 2 > space.width / 2 + 0.005 ||
       y + h / 2 > space.height + 0.005 || y - h / 2 < -0.005 ||
       Math.abs(z) + d / 2 > space.length / 2 + 0.005)) {
@@ -281,7 +304,7 @@ export function computeLayout(config: DetailingConfiguration): LayoutResult {
     }
   }
   for (const item of placements.filter(p => getProduct(p.productId)?.category !== 'frame')) {
-    if (wheelHousings.some(arch => item.position.every((v, axis) => Math.abs(v - arch.position[axis]) < (item.size[axis] + arch.size[axis]) / 2 - 0.005))) {
+    if (wheelHousings.some(arch => item.position.every((v, axis) => Math.abs(v - arch.position[axis]) < (placedSize(item)[axis] + arch.size[axis]) / 2 - 0.005))) {
       warnings.push(`${getProduct(item.productId)!.name}: overlapt met de geschatte wielkast.`);
     }
   }
@@ -290,7 +313,7 @@ export function computeLayout(config: DetailingConfiguration): LayoutResult {
     for (let b = a + 1; b < equipment.length; b++) {
       const first = equipment[a], second = equipment[b];
       if (first.position.every((v, axis) => Math.abs(v - second.position[axis]) <
-        (first.size[axis] + second.size[axis]) / 2 - 0.005)) {
+        (placedSize(first)[axis] + placedSize(second)[axis]) / 2 - 0.005)) {
         warnings.push(`${getProduct(first.productId)!.name} overlapt met ${getProduct(second.productId)!.name}.`);
       }
     }
@@ -306,7 +329,7 @@ export function computeLayout(config: DetailingConfiguration): LayoutResult {
     warnings.push(`Gewichtscontrole onvolledig: ${waterKg} kg water; leeggewichten, inzittenden en resterend laadvermogen moeten worden gecontroleerd.`);
   }
   requiresInstallerReview = warnings.length > 0;
-  const fits = !warnings.some(w => /buiten de beschikbare|overlapt|niet geschikt|overschrijdt|geen vrije vloerpositie|vereist een compressor/.test(w));
+  const fits = !warnings.some(w => /buiten de beschikbare|overlapt|niet geschikt|overschrijdt|geen vrije vloerpositie|past niet op|vereist een compressor/.test(w));
 
   return {
     placements,

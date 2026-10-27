@@ -38,6 +38,7 @@ export type PlacementZone =
   | 'ceiling'
   | 'leftRearDoor'
   | 'rightRearDoor'
+  | 'rightSideAccess'
   | 'any';
 
 export type VisualType =
@@ -50,6 +51,7 @@ export type VisualType =
   | 'frame'
   | 'shelf'
   | 'toolbox'
+  | 'doorRack'
   | 'bottleHolder'
   | 'bucketHolder'
   | 'lining'
@@ -130,6 +132,7 @@ export interface CargoSpaceMeters {
 }
 
 export interface DetailingConfiguration {
+  doorMounts?: Record<string, 'leftRearDoor' | 'rightRearDoor' | 'rightSideAccess'>;
   vehicleCategory: VehicleCategory | null;
   cabType: CabType | null;
   /** Named model selection; dimensions are provisional until verified. */
@@ -158,6 +161,7 @@ export interface DetailingConfiguration {
 }
 
 export interface PlacedItem {
+  rotationY?: number;
   productId: string;
   zone: PlacementZone;
   position: [number, number, number];
@@ -194,6 +198,7 @@ export interface PricingResult {
 }
 
 export interface ConfigurationSnapshot {
+  doorMounts?: DetailingConfiguration['doorMounts'];
   configurationId: string;
   createdAt: string;
   vehicleCategory: VehicleCategory | null;

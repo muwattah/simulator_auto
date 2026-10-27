@@ -1,5 +1,6 @@
 import { WorkshopVacuum, WorkshopCompressor, CableReel, ProductSet, LiningSample } from './WorkshopEquipment';
 import GeneratedEquipment, { generatedModelFor } from './GeneratedEquipment';
+import DoorRack from './DoorRack';
 import { RoundedBox } from '@react-three/drei';
 import { useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
@@ -390,6 +391,7 @@ export function ProductMeshSwitcher({
   const props = { item, selected, onSelect };
   let mesh: ReactNode = null;
   switch (type) {
+    case 'doorRack': mesh = <DoorRack {...props} />; break;
     case 'lining': mesh = <LiningSample {...props} />; break;
     case 'tank': mesh = <TankMesh {...props} />; break;
     case 'hoseReel': mesh = <HoseReelMesh {...props} />; break;

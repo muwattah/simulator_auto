@@ -1,5 +1,5 @@
 import { configurationKey, registerCapture } from '../services/configurationCapture';
-import { lazy, Suspense, useState, useCallback } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { getProduct } from '../data/detailingCatalog';
 import type { CameraPreset } from './three/VanScene3D';
@@ -18,6 +18,7 @@ const CAMERAS: { id: CameraPreset; label: string }[] = [
   { id: 'rear', label: 'Achter' },
   { id: 'left', label: 'Links' },
   { id: 'right', label: 'Rechts' },
+  { id: 'front', label: 'Voorkant' },
 ];
 
 function supportsWebGL() {
@@ -50,8 +51,17 @@ export default function LoadSpaceViewer() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [vanSettings, setVanSettings] = useState<VanViewSettings>({
-    body: 'solid', roofVisible: true, doorsOpen: true,
+    body: 'solid', roofVisible: true, doorsOpen: true, sideDoorOpen:true,
   });
+
+  useEffect(() => {
+    const focus = (event: Event) => {
+      const door = (event as CustomEvent<string>).detail;
+      setMode('3d');setCameraPreset(door === 'rightSideAccess' ? 'right' : 'rear');setCameraRevision(v=>v+1);
+      setVanSettings(s=>({...s,doorsOpen:true,sideDoorOpen:true}));
+    };
+    window.addEventListener('rs-door-focus',focus);return ()=>window.removeEventListener('rs-door-focus',focus);
+  },[]);
 
   const effectiveMode = mode === 'foto' ? 'foto' : !webglOk ? '2d' : mode;
   const photoGroup: PhotoGroup =
@@ -195,6 +205,10 @@ export default function LoadSpaceViewer() {
           <button type="button" onClick={() => setVanSettings(s => ({ ...s, roofVisible: !s.roofVisible }))}
             className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-2 text-xs">
             <ScanEye size={14} /> {vanSettings.roofVisible ? 'Dak verbergen' : 'Dak tonen'}
+          </button>
+          <button type="button" onClick={() => setVanSettings(s => ({...s,sideDoorOpen:!s.sideDoorOpen}))}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-2 text-xs">
+            <DoorOpen size={14} /> {vanSettings.sideDoorOpen ? 'Zijdeur sluiten' : 'Zijdeur openen'}
           </button>
           <button type="button" onClick={() => setVanSettings(s => ({ ...s, doorsOpen: !s.doorsOpen }))}
             className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-2 text-xs">

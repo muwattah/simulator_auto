@@ -12,6 +12,7 @@ export interface VanViewSettings {
   body: 'transparent' | 'solid' | 'hidden';
   roofVisible: boolean;
   doorsOpen: boolean;
+  sideDoorOpen?: boolean;
 }
 
 type Props = {

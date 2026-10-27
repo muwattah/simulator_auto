@@ -1,3 +1,5 @@
+import DoorMountControl from './DoorMountControl';
+import { canMountOnDoor } from '../lib/doorMounts';
 import { useState } from 'react';
 import {
   Box, Check, ChevronRight, ClipboardList, Droplets, Info,
@@ -97,6 +99,7 @@ function ProductCard({ item, active, onSelect }: {
       <div className="flex flex-1 flex-col p-2.5 sm:p-3">
         <h3 className="min-h-10 text-xs font-bold leading-snug text-[var(--text-primary)] sm:text-[13px]">{item.name}</h3>
         <p className="mt-1 text-[11px] text-[var(--text-muted)]">{dims}</p>
+        {active && canMountOnDoor(item) && <DoorMountControl product={item} />}
         <div className="mt-auto pt-2.5">
           <p className="mb-2 text-[11px] text-[var(--text-secondary)]">
             {item.price === null ? 'Prijs op aanvraag' : formatPriceOrPending(item.price)}
@@ -234,7 +237,7 @@ export default function DetailingFlow() {
               <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 sm:flex"><Box size={22} /></span>
               <div className="min-w-0">
                 <h1 className="text-sm font-extrabold leading-snug tracking-tight sm:text-xl">Jouw mobiele werkplaats, in 3D</h1>
-                <p className="mt-0.5 text-[11px] text-[var(--text-muted)] sm:text-xs">Eén algemene voorbeeldbestelwagen · Direct samenstellen</p>
+                <p className="mt-0.5 text-[11px] text-[var(--text-muted)] sm:text-xs">Transit Custom L1H1 · Vormbenadering op basis van foto</p>
               </div>
             </div>
             <button type="button" onClick={() => setPanel('overview')}

@@ -1,0 +1,20 @@
+[
+  {
+    "device": "desktop",
+    "doorMeshes": 3,
+    "rearHinge": "passed",
+    "slidingTranslation": "passed",
+    "remove": "passed",
+    "image": "passed",
+    "errors": []
+  },
+  {
+    "device": "mobile",
+    "doorMeshes": 3,
+    "rearHinge": "passed",
+    "slidingTranslation": "passed",
+    "remove": "passed",
+    "image": "passed",
+    "errors": []
+  }
+]
