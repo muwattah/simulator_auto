@@ -1,4 +1,5 @@
 import { summaryImage, renderSetupImage } from '../services/renderSetupImage';
+import QuoteTurnstile from './QuoteTurnstile';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Check, Copy, MessageCircle, Phone, AlertCircle, FileText } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
@@ -9,6 +10,7 @@ import {
   buildQuotePayload,
   formatQuoteSummary,
   submitQuoteRequest,
+  quoteEmailConfigured,
   type QuotePayload,
 } from '../services/quoteService';
 import type { Customer } from '../types';
@@ -72,6 +74,10 @@ export default function QuoteForm({ onClose }: Props) {
     message: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const turnstileSiteKey = import.meta.env.VITE_QUOTE_TURNSTILE_SITE_KEY as string | undefined;
   const [preview, setPreview] = useState<{ key: string; image: string | null } | null>(null);
   const previewKey = JSON.stringify(configuration);
   useEffect(() => {
@@ -101,6 +107,11 @@ export default function QuoteForm({ onClose }: Props) {
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
+    setSubmissionError(null);
+    if (quoteEmailConfigured && !turnstileToken) {
+      setSubmissionError('Voltooi eerst de beveiligingscontrole.');
+      return;
+    }
     setSubmitting(true);
     try {
       const configurationId = generateConfigurationId();
@@ -130,7 +141,12 @@ export default function QuoteForm({ onClose }: Props) {
       });
 
       const summary = formatQuoteSummary(finalPayload);
-      const submitResult = await submitQuoteRequest(finalPayload);
+      const submitResult = await submitQuoteRequest(finalPayload, turnstileToken);
+      if (!submitResult.ok) {
+        setSubmissionError(submitResult.error);
+        setTurnstileReset(value => value + 1);
+        return;
+      }
 
       const legacyCustomer: Customer = {
         firstName: form.name.trim().split(/\s+/)[0] || form.name.trim(),
@@ -146,7 +162,7 @@ export default function QuoteForm({ onClose }: Props) {
       setResult({
         payload: finalPayload,
         summary,
-        message: submitResult.ok ? submitResult.message : submitResult.error,
+        message: submitResult.message,
       });
     } finally {
       setSubmitting(false);
@@ -226,7 +242,7 @@ export default function QuoteForm({ onClose }: Props) {
         )}
 
         <p className="text-xs text-[var(--text-muted)] text-center">
-          Automatische e-mailverzending is nog niet actief. Deel de referentie of samenvatting via WhatsApp of telefoon.
+          {quoteEmailConfigured ? 'Dit is een ontvangstbevestiging en nog geen definitieve offerte.' : 'Er is geen e-mail verzonden. Deel de referentie of samenvatting via WhatsApp of telefoon.'}
         </p>
       </div>
     );
@@ -246,7 +262,9 @@ export default function QuoteForm({ onClose }: Props) {
           alt="Jouw geselecteerde apparatuur samen op één installatieframe" className="w-full max-h-64 object-contain bg-[#aeb3b6]" />
           : <p className="p-4 text-sm text-[var(--warning)]">De 3D-afbeelding kon niet worden gemaakt. De onderdelenlijst blijft beschikbaar.</p>)
           : <p className="p-4 text-sm text-[var(--text-secondary)]" role="status">Afbeelding van jouw installatie wordt gemaakt…</p>}
-        <p className="p-3 text-xs text-[var(--text-muted)]">Je ontvangt hieronder een samenvatting en een bewaarbare afbeelding van deze selectie. Automatische e-mailverzending is nog niet actief.</p>
+        <p className="p-3 text-xs text-[var(--text-muted)]">{quoteEmailConfigured
+          ? 'Na verzending ontvang jij per e-mail deze eindfoto en je gekozen onderdelen. RS Car Detailing ontvangt de volledige aanvraag.'
+          : 'Je kunt de eindfoto en je selectie bewaren. Automatische e-mail wordt geactiveerd zodra de maildienst gekoppeld is.'}</p>
       </div>
 
       <div className="rounded-lg border border-[var(--accent-muted)] bg-[var(--accent-soft)] p-3">
@@ -392,9 +410,15 @@ export default function QuoteForm({ onClose }: Props) {
         </p>
       )}
 
+      {quoteEmailConfigured && turnstileSiteKey && (
+        <QuoteTurnstile sitekey={turnstileSiteKey} onToken={setTurnstileToken} resetSignal={turnstileReset} />
+      )}
+      {submissionError && (
+        <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-300">{submissionError}</p>
+      )}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <button type="submit" className="btn-primary flex-1 justify-center" disabled={submitting}>
-          {submitting ? 'Bezig…' : 'Aanvraag voorbereiden'}
+          {submitting ? 'Verzenden…' : quoteEmailConfigured ? 'Offerteaanvraag verzenden' : 'Aanvraag lokaal voorbereiden'}
         </button>
         {onClose && (
           <button type="button" onClick={onClose} className="btn-ghost">
