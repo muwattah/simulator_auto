@@ -12,7 +12,7 @@ function App() {
   const [route,setRoute]=useState(()=>resolveRoute(window.location.pathname));
   const navigate=useCallback((path:string)=>{
     const next=sitePath(path);
-    if(window.location.pathname!==next)window.history.pushState({},'',next);
+    if(window.location.pathname!==next || window.location.search || window.location.hash)window.history.pushState({},'',next);
     setRoute(resolveRoute(next));window.scrollTo(0,0);
   },[]);
   const goHome=useCallback(()=>navigate('/'),[navigate]);
