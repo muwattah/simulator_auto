@@ -4,17 +4,16 @@ De openbare website draait op GitHub Pages en kan **geen geheime mail-API-sleute
 
 ## Voor de eigenaar — eenmalige koppeling
 
-1. Kies het echte e-mailadres waarop jij aanvragen wil ontvangen. Het project bevat bewust nog **geen verzonnen bedrijfsadres**.
+1. Het ontvangstadres is door de eigenaar opgegeven: **info@survion.shop**. Dit staat vast als publieke Worker-variabele `QUOTE_ADMIN_EMAIL` in `wrangler.toml`; klantaanvragen kunnen het ontvangstadres niet aanpassen.
 2. Maak een account bij [Resend](https://resend.com). Verifieer een verzenddomein (bijvoorbeeld het domein van jouw zaak) door de gevraagde DNS-records te plaatsen. Dit vereist toegang tot DNS en mogelijk verificatie.
 3. Maak een Cloudflare-account en Turnstile-widget voor het domein **muwattah.github.io**. Noteer de publieke sitekey en houd de geheime sleutel privé.
-4. Deploy de Worker vanuit deze map (Node.js en Wrangler nodig): `npx wrangler deploy`. Bewaar vervolgens deze vier waarden uitsluitend als Cloudflare Worker secrets:
+4. Deploy de Worker vanuit deze map (Node.js en Wrangler nodig): `npx wrangler deploy`. Bewaar vervolgens deze **drie geheime waarden** uitsluitend als Cloudflare Worker secrets:
 
    `npx wrangler secret put RESEND_API_KEY`
    `npx wrangler secret put QUOTE_FROM_EMAIL`
-   `npx wrangler secret put QUOTE_ADMIN_EMAIL`
    `npx wrangler secret put TURNSTILE_SECRET_KEY`
 
-   De waarde van `QUOTE_FROM_EMAIL` moet een geverifieerd afzenderadres zijn, bijvoorbeeld `offertes@jouwdomein.be`. De waarde van `QUOTE_ADMIN_EMAIL` is het persoonlijke zakelijke ontvangstadres.
+   De waarde van `QUOTE_FROM_EMAIL` moet een geverifieerd afzenderadres zijn, bijvoorbeeld `offertes@jouwdomein.be`. De Worker verstuurt alle beheerdersaanvragen naar `info@survion.shop`. De afzender hoeft niet ditzelfde adres te zijn, zolang Resend het domein of afzenderadres heeft geverifieerd.
 5. Stel op GitHub in **Repository → Settings → Secrets and variables → Actions → Variables** deze **publieke** variabelen in:
 
    - `VITE_QUOTE_API_URL` = jouw Worker-URL, bijvoorbeeld `https://rs-detailing-quote-mail.<account>.workers.dev`
