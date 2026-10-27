@@ -2,8 +2,8 @@
  * Private Cloudflare Worker for RS Car Detailing quote requests.
  *
  * Secrets are configured only in Cloudflare, never in the public Vite bundle:
- * RESEND_API_KEY, TURNSTILE_SECRET_KEY, QUOTE_FROM_EMAIL, QUOTE_ADMIN_EMAIL.
- * Required public variable: ALLOWED_ORIGIN.
+ * RESEND_API_KEY, TURNSTILE_SECRET_KEY, QUOTE_FROM_EMAIL.
+ * Required Worker variables: ALLOWED_ORIGIN and QUOTE_ADMIN_EMAIL (info@survion.shop).
  */
 const MAX_BODY_BYTES = 5_000_000;
 const MAX_IMAGE_BASE64 = 3_000_000;
