@@ -33,7 +33,7 @@ type FieldErrors = Partial<Record<keyof FormState, string>>;
 // FormSubmit requires a regular multipart form for JPG attachments and
 // non-AJAX submission for its built-in customer auto-response.
 // In local development, keep the existing local-only behavior for testing.
-const FORM_SUBMIT_RECIPIENT = import.meta.env.PROD ? 'asbhir.be@hotmail.com' : null;
+const FORM_SUBMIT_RECIPIENT = import.meta.env.PROD ? 'zakaria.el.a@hotmail.com' : null;
 const FILE_SIZE_LIMIT = 10 * 1024 * 1024;
 
 /**
