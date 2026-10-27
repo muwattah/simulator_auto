@@ -4,7 +4,7 @@ compatibility_date = "2026-10-01"
 
 [vars]
 ALLOWED_ORIGIN = "https://muwattah.github.io"
-QUOTE_ADMIN_EMAIL = "info@survion.shop"
+QUOTE_ADMIN_EMAIL = "asbhir.be@hotmail.com"
 
 # Required Cloudflare Worker secrets, never committed:
 # RESEND_API_KEY       - Resend API key for verified sender domain
