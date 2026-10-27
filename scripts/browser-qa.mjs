@@ -87,7 +87,7 @@ try {
     await page.locator('#qf-phone').fill('00000000');
     await page.locator('#qf-privacy').check();
     await page.getByRole('button', { name: 'Aanvraag lokaal voorbereiden' }).click();
-    await page.getByText('Configuratie voorbereid', { exact: true }).waitFor();
+    await page.getByText('Configuratie lokaal voorbereid', { exact: true }).waitFor();
     const savedRequest = await page.evaluate(() => JSON.parse(localStorage.getItem('rs-quote-requests'))[0]);
     assert.equal(savedRequest.vehicle.customerDescription, 'Ford Transit Custom, 2022, L2');
     const savedQuote = await page.evaluate(() => JSON.parse(localStorage.getItem('detailing-configurator-v1')).state.quotes[0]);
