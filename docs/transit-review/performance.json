@@ -1,0 +1,86 @@
+[
+  {
+    "viewport": "1600×1100, DPR 1",
+    "mode": "headless Edge, continuous OrbitControls rotation, warm shader cache",
+    "readyMs": 6868,
+    "physicalPhone": false,
+    "errors": [],
+    "runs": [
+      {
+        "frames": 120,
+        "p50Ms": 16.6,
+        "p95Ms": 17.3,
+        "p99Ms": 17.6,
+        "maxMs": 17.700000047683716,
+        "over50Ms": 0,
+        "drawCalls": 258,
+        "triangles": 490220,
+        "programs": 22
+      },
+      {
+        "frames": 120,
+        "p50Ms": 16.7,
+        "p95Ms": 16.9,
+        "p99Ms": 17,
+        "maxMs": 17,
+        "over50Ms": 0,
+        "drawCalls": 254,
+        "triangles": 490172,
+        "programs": 22
+      },
+      {
+        "frames": 120,
+        "p50Ms": 16.7,
+        "p95Ms": 17,
+        "p99Ms": 17.3,
+        "maxMs": 17.700000047683716,
+        "over50Ms": 0,
+        "drawCalls": 250,
+        "triangles": 490124,
+        "programs": 22
+      }
+    ]
+  },
+  {
+    "viewport": "390×844, DPR 3 capped at 1.5",
+    "mode": "headless Edge, continuous OrbitControls rotation, warm shader cache",
+    "readyMs": 3473,
+    "physicalPhone": false,
+    "errors": [],
+    "runs": [
+      {
+        "frames": 120,
+        "p50Ms": 16.6,
+        "p95Ms": 16.9,
+        "p99Ms": 17,
+        "maxMs": 17.09999990463257,
+        "over50Ms": 0,
+        "drawCalls": 258,
+        "triangles": 490220,
+        "programs": 22
+      },
+      {
+        "frames": 120,
+        "p50Ms": 16.7,
+        "p95Ms": 16.9,
+        "p99Ms": 17.3,
+        "maxMs": 17.399999856948853,
+        "over50Ms": 0,
+        "drawCalls": 252,
+        "triangles": 490148,
+        "programs": 22
+      },
+      {
+        "frames": 120,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.9,
+        "maxMs": 16.90000009536743,
+        "over50Ms": 0,
+        "drawCalls": 250,
+        "triangles": 490124,
+        "programs": 22
+      }
+    ]
+  }
+]

@@ -1,3 +1,6 @@
+import MountingPanels from './MountingPanels';
+import { makeCheckerPlateTexture } from './surfaceMaterials';
+import { isDoorZone, mountingPanels } from '../../lib/doorMounts';
 import { useMemo, useEffect, useRef, Suspense } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, useProgress, RoundedBox } from '@react-three/drei';
@@ -11,7 +14,7 @@ import StudioLighting from './StudioLighting';
 import type { VanViewSettings } from './VanBody3D';
 import { useFrame } from '@react-three/fiber';
 
-export type CameraPreset = 'overview' | 'left' | 'right' | 'rear' | 'top';
+export type CameraPreset = 'overview' | 'left' | 'right' | 'rear' | 'top' | 'front';
 interface Props {
   space: CargoSpaceMeters;
   placements: PlacedItem[];
@@ -28,23 +31,9 @@ interface Props {
   onCaptureReady?: (capture: (() => string | null) | null) => void;
 }
 
-export function makeCheckerPlateTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256;
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#89939b'; ctx.fillRect(0, 0, 256, 256);
-  for (let x = -20; x < 280; x += 26) for (let y = -20; y < 280; y += 30) {
-    ctx.save(); ctx.translate(x + (Math.floor(y / 30) % 2 ? 13 : 0), y); ctx.rotate(-Math.PI / 4);
-    ctx.fillStyle = '#d0d7dc'; ctx.fillRect(-9, -2.5, 18, 4);
-    ctx.fillStyle = '#59656e'; ctx.fillRect(-9, 2, 18, 1.5); ctx.restore();
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(5, 7);
-  texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 8;
-  return texture;
-}
 
 function Platform({ space, items, studio, lining }: { space: CargoSpaceMeters; items: PlacedItem[]; studio: boolean; lining: string }) {
-  const bounds = useMemo(() => setupBounds(items), [items]);
+  const bounds = useMemo(() => setupBounds(items.filter(i=>!isDoorZone(i.zone))), [items]);
   const tread = useMemo(makeCheckerPlateTexture, []);
   useEffect(() => () => tread.dispose(), [tread]);
   const width = studio ? bounds.size[0] + 0.16 : space.width;
@@ -69,7 +58,7 @@ function CameraController({ props }: { props: Props }) {
   useEffect(() => {
     let pos: number[], look: number[];
     if (props.presentationMode || props.productPreview) {
-      const b = setupBounds(props.placements);
+      const b = setupBounds(props.presentationMode ? [...props.placements,...mountingPanels(props.placements,true)] : props.placements);
       const radius = new THREE.Vector3(...b.size).length() / 2;
       const fov = (camera as THREE.PerspectiveCamera).fov * Math.PI / 180;
       const fit = Math.min(fov, 2 * Math.atan(Math.tan(fov / 2) * size.width / size.height));
@@ -78,10 +67,11 @@ function CameraController({ props }: { props: Props }) {
       look = b.center; pos = direction.add(new THREE.Vector3(...look)).toArray();
     } else {
       const presets = {
-        rear: { pos: [0, H * 0.75, -L * 1.55], look: [0, H * 0.45, -L * 0.25] },
+        rear: { pos: [0, H * 0.75, -L * 2.1], look: [0, H * 0.45, -L * 0.25] },
         overview: { pos: [W * 1.9, H * 1.2, -L * 1.9], look: [0, H * 0.4, 0.25] },
-        left: { pos: [-W * 3.8, H, L * 0.28], look: [0, H * 0.4, L * 0.28] },
-        right: { pos: [W * 3.8, H, L * 0.28], look: [0, H * 0.4, L * 0.28] },
+        front: { pos: [W*1.7,H*.9,L*2.8], look:[0,.3,L*.65] },
+        left: { pos: [W * 4.4, H, L * 0.4], look: [0, H * 0.4, L * 0.28] },
+        right: { pos: [-W*4.4,H*.95,.68], look:[0,.65,.68] },
         top: { pos: [0.001, L * 2.8, L * 0.28], look: [0, 0, L * 0.28] },
       };
       ({ pos, look } = presets[props.cameraPreset]);
@@ -119,8 +109,7 @@ function CaptureBridge({ ready, items }: { ready: NonNullable<Props['onCaptureRe
   const ids = items.map(i => i.productId).join();
   useEffect(() => {
     const capture = () => {
-      const equipment = scene.getObjectByName('configured-equipment');
-      if (useProgress.getState().active || equipment?.children.length !== items.length) return null;
+      if (useProgress.getState().active || items.some(item => !scene.getObjectByName('product:' + item.productId))) return null;
       for (const item of items) if (generatedModelFor(item.productId) && !scene.getObjectByName('asset:' + item.productId)) return null;
       try { gl.render(scene, camera); return gl.domElement.toDataURL('image/jpeg', 0.92); }
       catch { return null; }
@@ -131,7 +120,7 @@ function CaptureBridge({ ready, items }: { ready: NonNullable<Props['onCaptureRe
 }
 
 function RendererMetrics() {
-  const { gl, camera, invalidate } = useThree();
+  const { gl, camera, invalidate, scene } = useThree();
   const controls = useThree(s => s.controls) as { autoRotate: boolean; update: () => void } | null;
   const enabled = import.meta.env.DEV && new URLSearchParams(location.search).has('qa');
   useEffect(() => {
@@ -157,6 +146,11 @@ function RendererMetrics() {
     m.triangles = gl.info.render.triangles;
     m.programs = gl.info.programs?.length ?? 0;
     m.camera = camera.position.toArray();
+    const doorPositions: Record<string,number[]>={};
+    scene.traverse(node=>{if(node.userData.doorMounted)doorPositions[node.name.replace('product:','')]=node.getWorldPosition(new THREE.Vector3()).toArray();});
+    (window as unknown as {__rsDoorMounts:Record<string,number[]>}).__rsDoorMounts=doorPositions;
+    const sliding=scene.getObjectByName('SlidingDoor_right_Group');
+    if(sliding)(window as unknown as {__rsSlidingDoor:number[]}).__rsSlidingDoor=sliding.getWorldPosition(new THREE.Vector3()).toArray();
   });
   return null;
 }
@@ -164,19 +158,21 @@ function RendererMetrics() {
 function SceneContent(props: Props) {
   const loading = useProgress(s => s.active);
   const studio = Boolean(props.presentationMode), product = Boolean(props.productPreview);
-  const floor = studio ? -0.10 : product ? -0.012 : -0.64 * props.space.height / 2.009;
+  const floor = studio ? -0.10 : product ? -0.012 : -0.575;
   return <>
     {!studio && !product && <RendererMetrics />}
     <StudioLighting light={studio} floorY={floor} room={!product} />
     {!product && <Platform space={props.space} items={props.placements} studio={studio} lining={props.liningVariant} />}
     {!studio && !product && <Suspense fallback={null}>
-      <GeneratedVan space={props.space} settings={props.vanSettings ?? { body: 'solid', roofVisible: true, doorsOpen: true }} />
+      <GeneratedVan space={props.space} settings={props.vanSettings ?? { body: 'solid', roofVisible: true, doorsOpen: true, sideDoorOpen:true }}
+        liningVariant={props.liningVariant} mountItems={props.placements.filter(item => isDoorZone(item.zone) && item.zone !== 'rightSideAccess')} selectedProductId={props.selectedProductId} onSelectProduct={props.onSelectProduct} />
     </Suspense>}
+    {!product && <MountingPanels items={props.placements} studio={studio} />}
     <group name="configured-equipment">
-      {props.placements.map(item => <group key={item.productId} name={'product:' + item.productId}>
-        <ProductMeshSwitcher item={item} selected={props.selectedProductId === item.productId}
+      {props.placements.filter(item => studio || product || (!isDoorZone(item.zone) || item.zone === 'rightSideAccess')).map(item => <group key={item.productId} name={'product:' + item.productId} userData={{doorMounted:isDoorZone(item.zone)}} rotation={[0,item.rotationY ?? 0,0]} position={item.position}>
+        <ProductMeshSwitcher item={{...item,position:[0,0,0]}} selected={props.selectedProductId === item.productId}
           onSelect={() => props.onSelectProduct(props.selectedProductId === item.productId ? null : item.productId)} />
-        {props.floatValve && item.productId.startsWith('tank_') && <group position={[item.position[0] + item.size[0] * .48, item.position[1] + item.size[1] * .3, item.position[2]]}>
+        {props.floatValve && item.productId.startsWith('tank_') && <group position={[item.size[0] * .48, item.size[1] * .3, 0]}>
           <mesh rotation={[0,0,Math.PI/2]} castShadow><cylinderGeometry args={[.022,.022,.07,16]} /><meshStandardMaterial color="#b8964e" metalness={.85} roughness={.28} /></mesh>
           <mesh position={[.045,0,0]}><boxGeometry args={[.015,.065,.015]} /><meshStandardMaterial color="#b8964e" metalness={.85} roughness={.28} /></mesh>
           <mesh position={[.045,.035,0]}><boxGeometry args={[.06,.012,.018]} /><meshStandardMaterial color="#bc3025" /></mesh>

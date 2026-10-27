@@ -49,6 +49,7 @@ interface State {
   toggleExtra: (id: string) => void;
   setBottleHolder: (v: boolean) => void;
   setBucketHolder: (v: boolean) => void;
+  setDoorMount: (id: string, door: 'leftRearDoor' | 'rightRearDoor' | 'rightSideAccess') => void;
   setInstallationType: (t: InstallationType) => void;
   setSpecialRequests: (t: string) => void;
   setSelectedProductId: (id: string | null) => void;
@@ -192,6 +193,7 @@ export const useConfiguratorStore = create<State>()(
       setGenerator: (id) => set((s) => ({ configuration: { ...s.configuration, generatorId: id } })),
       setPowerReel: (id) => set((s) => ({ configuration: { ...s.configuration, powerReelId: id } })),
       setVacuum: (id) => set((s) => ({ configuration: { ...s.configuration, vacuumId: id } })),
+      setDoorMount: (id, door) => set(s => ({ configuration: { ...s.configuration, doorMounts: { ...s.configuration.doorMounts, [id]: door } } })),
       setLining: (id) => set((s) => ({ configuration: { ...s.configuration, liningId: id } })),
       setFrameCombo: (id) => set((s) => ({ configuration: { ...s.configuration, frameComboId: id } })),
 
@@ -258,7 +260,7 @@ export const useConfiguratorStore = create<State>()(
 
       getVehicleLabel: () => {
         const { vehicleCategory, cabType, vehicleModelId, vehicleLength, vehicleRoof } = get().configuration;
-        if (vehicleCategory === 'medium' && !vehicleModelId) return 'Algemene voorbeeldbestelwagen (Transit Custom-formaat)';
+        if (vehicleCategory === 'medium' && !vehicleModelId) return 'Ford Transit Custom L1H1 (vormbenadering)';
         const cat = getVehicleCategory(vehicleCategory);
         if (!cat) return 'Algemene voorbeeldbestelwagen';
         const cab =
@@ -281,6 +283,7 @@ export const useConfiguratorStore = create<State>()(
         const pricing = calculatePricing(c);
         const layout = computeLayout(c);
         return {
+          doorMounts: c.doorMounts,
           configurationId: generateConfigurationId(),
           createdAt: new Date().toISOString(),
           vehicleCategory: c.vehicleCategory,

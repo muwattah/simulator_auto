@@ -1,3 +1,5 @@
+import { computeLayout } from '../lib/layoutEngine';
+import { isDoorZone, DOOR_LABELS } from '../lib/doorMounts';
 /**
  * Quote request architecture — Fase 5.2
  *
@@ -84,6 +86,7 @@ export interface QuotePayload {
     vacuumName: string | null;
   };
   installation: {
+    doorMounts?: DetailingConfiguration['doorMounts'];
     liningId: string | null;
     liningName: string | null;
     frameComboId: string | null;
@@ -171,6 +174,7 @@ export function buildQuotePayload(params: {
       vacuumName: productName(c.vacuumId),
     },
     installation: {
+      doorMounts: Object.fromEntries(computeLayout(c).placements.filter(i => isDoorZone(i.zone)).map(i => [i.productId,i.zone])) as DetailingConfiguration['doorMounts'],
       liningId: c.liningId,
       liningName: productName(c.liningId),
       frameComboId: c.frameComboId,
@@ -240,6 +244,8 @@ export function formatQuoteSummary(payload: QuotePayload): string {
   lines.push(`- Bucket holder: ${payload.installation.bucketHolder ? 'Ja' : 'Nee'}`);
   lines.push(`- Framecombinatie: ${payload.installation.frameComboName ?? '—'}`);
   lines.push('');
+  lines.push('Deurmontage:');
+  Object.entries(payload.installation.doorMounts ?? {}).forEach(([id, door]) => lines.push(`- ${productName(id) ?? id}: ${DOOR_LABELS[door]}`));
   lines.push('Installatie:');
   lines.push(`- Keuze: ${payload.installation.installationType ?? '—'}`);
   lines.push('');
@@ -305,6 +311,7 @@ export async function submitQuoteRequest(payload: QuotePayload): Promise<SubmitQ
 
 export function snapshotFromPayload(payload: QuotePayload): ConfigurationSnapshot {
   return {
+    doorMounts: payload.installation.doorMounts,
     configurationId: payload.configurationId,
     createdAt: payload.createdAt,
     vehicleCategory: payload.vehicle.categoryId as ConfigurationSnapshot['vehicleCategory'],

@@ -1,3 +1,4 @@
+import { presentationItems } from '../lib/doorMounts';
 import { Component, lazy, Suspense, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { computeLayout, getCargoSpace, collectProducts } from '../lib/layoutEngine';
@@ -62,6 +63,7 @@ function render(config: DetailingConfiguration, productId?: string): Promise<str
       const size: [number, number, number] = [p.dimensions.width || 0.7, p.dimensions.height || 0.5, p.dimensions.depth || 0.4];
       placements = [{ productId, zone: 'floor', position: [0, size[1] / 2, 0], size } as PlacedItem];
     }
+    if (!productId) placements = presentationItems(placements);
     const deadline = performance.now() + 30000;
     const poll = () => {
       if (finished) return;
@@ -104,29 +106,44 @@ export async function summaryImage(config: DetailingConfiguration, reference: st
   source.src = image;
   await source.decode();
   const canvas = document.createElement('canvas');
-  const parts = setupParts(config, computeLayout(config).placements);
-  canvas.width = 1500; canvas.height = Math.max(1000, 230 + parts.reduce((sum, p) => sum + Math.ceil(p.length / 31) * 25 + 9, 0));
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return image;
-  ctx.fillStyle = '#e6e8e9'; ctx.fillRect(0, 0, 1500, canvas.height);
-  ctx.drawImage(source, 0, 110, 1100, 850);
-  ctx.fillStyle = '#121b25'; ctx.font = 'bold 30px Arial';
-  ctx.fillText('Jouw mobiele detailinginstallatie', 36, 48);
-  ctx.font = '17px Arial'; ctx.fillText(reference + ' • 3D-onderdelenoverzicht', 36, 76);
-  ctx.font = '16px Arial'; ctx.fillText('Bestelwagen: ' + vehicleDescription.slice(0, 130), 36, 101);
-  ctx.fillStyle = '#15202c'; ctx.fillRect(1110, 110, 360, canvas.height - 200);
-  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 21px Arial'; ctx.fillText('Jouw gekozen onderdelen', 1130, 148);
-  ctx.font = '17px Arial';
-  let y = 183;
-  for (const part of parts) {
-    let line = '✓ ';
-    for (const word of part.split(' ')) {
-      if (ctx.measureText(line + word).width > 315) { ctx.fillText(line, 1130, y); y += 22; line = '  '; }
-      line += word + ' ';
+  const closed=computeLayout(config).placements;
+  const names=setupParts(config,closed);
+  const ids=closed.map(i=>i.productId);
+  if(config.floatValve && config.tankId) ids.push('float-valve');
+  if(config.liningId && config.liningId!=='lining_none')ids.push(config.liningId);
+  const thumbnails=await Promise.all(names.map(async(_,i)=>{
+    if(ids[i]==='float-valve')return null;
+    const thumb=new Image();thumb.src=`${import.meta.env.BASE_URL}product-renders/${ids[i]}.jpg`;
+    try {await thumb.decode();return thumb;}catch{return null;}
+  }));
+  canvas.width=1500;
+  const ctx=canvas.getContext('2d');if(!ctx)return image;
+  ctx.font='16px Arial';
+  const rows=names.map((name,i)=>{
+    const lines:string[]=[];let line='';
+    for(const word of name.split(' ')) {
+      if(line && ctx.measureText(line+word).width>228){lines.push(line.trim());line='';}
+      line+=word+' ';
     }
-    ctx.fillText(line, 1130, y); y += 31;
+    if(line)lines.push(line.trim());
+    return {lines,thumb:thumbnails[i],height:Math.max(60,lines.length*20+12)};
+  });
+  canvas.height=Math.max(1000,220+rows.reduce((sum,row)=>sum+row.height+8,0));
+  ctx.fillStyle='#e6e8e9';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(source,0,110,1100,850);
+  ctx.fillStyle='#121b25';ctx.font='bold 30px Arial';ctx.fillText('Jouw mobiele detailinginstallatie',36,48);
+  ctx.font='17px Arial';ctx.fillText(reference+' • 3D-onderdelenoverzicht',36,76);
+  ctx.font='16px Arial';ctx.fillText('Bestelwagen: '+vehicleDescription.slice(0,130),36,101);
+  ctx.fillStyle='#15202c';ctx.fillRect(1110,110,360,canvas.height-180);
+  ctx.fillStyle='#ffffff';ctx.font='bold 21px Arial';ctx.fillText('Jouw gekozen onderdelen',1130,148);
+  ctx.font='16px Arial';let y=170;
+  for(const row of rows) {
+    if(row.thumb)ctx.drawImage(row.thumb,1123,y,78,60);
+    else {ctx.fillStyle='#7bd244';ctx.fillText('✓',1150,y+32);}
+    ctx.fillStyle='#ffffff';row.lines.forEach((line,i)=>ctx.fillText(line,1210,y+20+i*20));
+    y+=row.height+8;
   }
-  ctx.fillStyle = '#344250'; ctx.font = '16px Arial';
-  ctx.fillText('3D-visualisatie • Maatvoering en definitieve inbouw worden gecontroleerd bij de offerte.', 36, canvas.height - 28);
-  return canvas.toDataURL('image/jpeg', 0.93);
+  ctx.fillStyle='#344250';ctx.font='16px Arial';
+  ctx.fillText('3D-visualisatie • Maatvoering en definitieve inbouw worden gecontroleerd bij de offerte.',36,canvas.height-28);
+  return canvas.toDataURL('image/jpeg',.93);
 }
