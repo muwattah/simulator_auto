@@ -277,70 +277,36 @@ export function formatQuoteSummary(payload: QuotePayload): string {
 }
 
 export type SubmitQuoteResult =
-  | { ok: true; mode: 'local' | 'email'; configurationId: string; message: string }
-  | { ok: false; error: string; adminReceived?: boolean };
+  | { ok: true; mode: 'local'; configurationId: string; message: string }
+  | { ok: false; error: string };
 
 /**
- * API endpoint is a public GitHub Actions variable injected at build time.
- * API credentials, destination and sender addresses exist ONLY on the Worker.
- * Without both public settings we keep the existing local-only behavior and
- * never suggest that email was sent.
+ * Abstracte submit-laag.
+ * Momenteel: lokale opslag + download/copy van de payload.
+ * GEEN echte e-mailverzending (geen backend / secrets in frontend).
+ *
+ * Toekomst: POST naar veilige server-side endpoint.
  */
-function saveLocal(payload: QuotePayload): boolean {
+export async function submitQuoteRequest(payload: QuotePayload): Promise<SubmitQuoteResult> {
   try {
     const key = 'rs-quote-requests';
     const existing = JSON.parse(localStorage.getItem(key) || '[]') as QuotePayload[];
+    // Keep large images in the downloadable request, not in limited localStorage.
     existing.unshift({ ...payload, previewImageDataUrl: null });
     localStorage.setItem(key, JSON.stringify(existing.slice(0, 20)));
-    return true;
   } catch {
-    return false;
-  }
-}
-
-export async function submitQuoteRequest(payload: QuotePayload, turnstileToken?: string | null, apiEndpoint?: string): Promise<SubmitQuoteResult> {
-  if (!apiEndpoint) {
-    const saved = saveLocal(payload);
-    return saved ? {
-      ok: true,
-      mode: 'local',
-      configurationId: payload.configurationId,
-      message: 'Je aanvraag is alleen op dit toestel voorbereid, niet per e-mail verstuurd. Bewaar het bestand en contacteer ons rechtstreeks.',
-    } : {
-      ok: false, error: 'E-mail is nog niet geconfigureerd en de browseropslag is niet beschikbaar. Download de volledige aanvraag.',
-    };
+    return { ok: false, error: 'Lokale opslag is niet beschikbaar. Bewaar de volledige aanvraag via de download; er is geen e-mail verzonden.' };
   }
 
-  if (!turnstileToken) return { ok: false, error: 'Voltooi eerst de beveiligingscontrole.' };
-  if (!payload.previewImageDataUrl) {
-    return { ok: false, error: 'De eindafbeelding kon niet worden gemaakt. Probeer een browser met 3D-ondersteuning.' };
-  }
-
-  try {
-    const response = await fetch(apiEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payload, turnstileToken }),
-    });
-    const result = await response.json() as {
-      ok?: boolean; error?: string; adminReceived?: boolean;
-      adminNotified?: boolean; customerNotified?: boolean;
-    };
-    if (!response.ok || !result.ok || !result.adminNotified || !result.customerNotified) {
-      return {
-        ok: false,
-        error: result.error || 'E-mailverzending is mislukt. Probeer opnieuw of download de aanvraag.',
-        adminReceived: result.adminReceived,
-      };
-    }
-    saveLocal(payload);
-    return {
-      ok: true, mode: 'email', configurationId: payload.configurationId,
-      message: 'De offerteaanvraag met eindfoto en onderdelenlijst is naar RS Car Detailing verstuurd. Je ontvangt een bevestigingsmail met dezelfde foto.',
-    };
-  } catch {
-    return { ok: false, error: 'Geen verbinding met de mailserver. Er is geen verzending bevestigd. Probeer opnieuw of bewaar je aanvraag.' };
-  }
+  return {
+    ok: true,
+    mode: 'local',
+    configurationId: payload.configurationId,
+    message:
+      'Uw aanvraag is lokaal vastgelegd met referentie ' +
+      payload.configurationId +
+      '. Er is nog geen automatische e-mailverzending. Neem contact op via WhatsApp of telefoon, of stuur de samenvatting handmatig.',
+  };
 }
 
 export function snapshotFromPayload(payload: QuotePayload): ConfigurationSnapshot {
