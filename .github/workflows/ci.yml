@@ -34,6 +34,9 @@ jobs:
       - name: Install Chromium for browser checks
         run: npx playwright install --with-deps chromium
 
+      - name: Static SEO and direct-route browser checks
+        run: npm run test:seo
+
       - name: Browser UX checks and screenshots
         run: |
           npm run dev -- --host 127.0.0.1 --port 5278 > /tmp/rs-vite.log 2>&1 &

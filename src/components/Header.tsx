@@ -1,3 +1,4 @@
+import { sitePath } from '../seo/routes';
 import { ArrowLeft, Settings, Phone } from 'lucide-react';
 import { company } from '../config/company';
 
@@ -12,10 +13,10 @@ export default function Header({ onAdminClick, onBackHome }: Props) {
       <div className="mx-auto flex h-14 max-w-[1920px] items-center justify-between gap-3 px-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3 sm:gap-5">
           {onBackHome && (
-            <button type="button" onClick={onBackHome} aria-label="Terug naar home"
+            <a href={sitePath('/')} aria-label="Terug naar home"
               className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-white sm:text-sm">
               <ArrowLeft size={18} /><span>Home</span>
-            </button>
+            </a>
           )}
           <div className="h-7 w-px shrink-0 bg-[var(--border)]" />
           <div className="flex min-w-0 items-center gap-2.5">
