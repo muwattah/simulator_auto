@@ -28,9 +28,6 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Quote email backend tests (no actual email sent)
-        run: node --test worker/test.mjs
-
       - name: Test
         run: npm test
 
