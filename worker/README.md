@@ -14,7 +14,7 @@ De openbare website draait op GitHub Pages en kan **geen geheime mail-API-sleute
    `npx wrangler secret put QUOTE_ADMIN_EMAIL`
    `npx wrangler secret put TURNSTILE_SECRET_KEY`
 
-   De waarde van `QUOTE_FROM_EMAIL` moet een geverifieerd afzenderadres zijn, bijvoorbeeld `RS Car Detailing <offertes@jouwdomein.be>`. De waarde van `QUOTE_ADMIN_EMAIL` is het persoonlijke zakelijke ontvangstadres.
+   De waarde van `QUOTE_FROM_EMAIL` moet een geverifieerd afzenderadres zijn, bijvoorbeeld `offertes@jouwdomein.be`. De waarde van `QUOTE_ADMIN_EMAIL` is het persoonlijke zakelijke ontvangstadres.
 5. Stel op GitHub in **Repository → Settings → Secrets and variables → Actions → Variables** deze **publieke** variabelen in:
 
    - `VITE_QUOTE_API_URL` = jouw Worker-URL, bijvoorbeeld `https://rs-detailing-quote-mail.<account>.workers.dev`
