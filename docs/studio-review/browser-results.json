@@ -1,0 +1,14 @@
+[
+  {
+    "device": "desktop",
+    "gpu": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "imageBytes": 235155,
+    "tests": "passed"
+  },
+  {
+    "device": "mobile",
+    "gpu": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "imageBytes": 235379,
+    "tests": "passed"
+  }
+]

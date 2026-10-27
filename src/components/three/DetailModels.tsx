@@ -1,6 +1,7 @@
+import { WorkshopVacuum, WorkshopCompressor, CableReel, ProductSet, LiningSample } from './WorkshopEquipment';
 import GeneratedEquipment, { generatedModelFor } from './GeneratedEquipment';
 import { RoundedBox } from '@react-three/drei';
-import { useMemo, useRef, type ReactNode } from 'react';
+import { useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { PlacedItem } from '../../types';
@@ -12,11 +13,11 @@ function useHighlightMat(selected: boolean, base: string, metalness = 0.4, rough
   return useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: selected ? '#3b82f6' : base,
+        color: base,
         metalness,
         roughness,
         emissive: selected ? '#1d4ed8' : '#000000',
-        emissiveIntensity: selected ? 0.18 : 0,
+        emissiveIntensity: selected ? 0.12 : 0,
       }),
     [selected, base, metalness, roughness]
   );
@@ -270,6 +271,20 @@ export function FrameMesh({ item, selected, onSelect }: { item: PlacedItem; sele
   const [w, h, d] = item.size;
   const steel = useHighlightMat(selected, '#343f47', 0.82, 0.3);
   const beam = 0.035;
+  const variant = getProduct(item.productId)?.visual3D.variant;
+  const plate = useMemo(() => {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#a1abb1'; ctx.fillRect(0,0,128,128);
+    for (let y=0;y<128;y+=32) for(let x=0;x<128;x+=32) {
+      ctx.save();ctx.translate(x+16,y+16);ctx.rotate(((x+y)/32%2?1:-1)*Math.PI/4);
+      ctx.fillStyle='#d4dde0';ctx.fillRect(-9,-2,18,3);ctx.fillStyle='#626f76';ctx.fillRect(-9,1,18,2);ctx.restore();
+    }
+    const texture = new THREE.CanvasTexture(canvas);texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(8,4);texture.colorSpace=THREE.SRGBColorSpace;
+    return texture;
+  }, []);
+  useEffect(() => () => plate.dispose(), [plate]);
+
   return <group position={item.position} onPointerDown={e => pick(e, onSelect)}>
     {[-1, 1].flatMap(x => [-1, 1].map(z => <group key={`${x}-${z}`} position={[x * (w - beam) / 2, 0, z * (d - beam) / 2]}>
       <RoundedBox args={[beam, h, beam]} radius={0.004} smoothness={2} material={steel} castShadow />
@@ -278,6 +293,11 @@ export function FrameMesh({ item, selected, onSelect }: { item: PlacedItem; sele
     </group>))}
     {[-0.48, 0.1, 0.48].flatMap(y => [-1, 1].map(z => <RoundedBox key={`${y}-${z}`} args={[w, beam, beam]} radius={0.004} smoothness={2} position={[0, y * h, z * (d - beam) / 2]} material={steel} castShadow />))}
     {[-1, 1].flatMap(x => [-0.48, 0.48].map(y => <RoundedBox key={`${x}-${y}`} args={[beam, beam, d]} radius={0.004} smoothness={2} position={[x * (w - beam) / 2, y * h, 0]} material={steel} castShadow />))}
+    {variant !== 'basic' && <mesh position={[0, h*.23, d*.43]} receiveShadow castShadow>
+      <boxGeometry args={[w-.07,h*.48,.009]} /><meshStandardMaterial map={plate} color="#b5c1c8" metalness={.82} roughness={.35} />
+    </mesh>}
+    {variant === 'toolbox' && <RoundedBox args={[w*.45,h*.25,d*.85]} radius={.015} smoothness={2} position={[w*.22,-h*.3,0]} castShadow><meshStandardMaterial color="#a7b4bc" metalness={.8} roughness={.3} /></RoundedBox>}
+    {(variant === 'full' || variant === 'tank_storage') && <mesh position={[0,-h*.05,0]} receiveShadow><boxGeometry args={[w-.07,.015,d-.05]} /><meshStandardMaterial color="#87969f" metalness={.8} roughness={.35} /></mesh>}
   </group>;
 }
 
@@ -364,22 +384,24 @@ export function ProductMeshSwitcher({
 }) {
   const prod = getProduct(item.productId);
   if (!prod) return null;
+  if (item.productId.startsWith('power_reel_')) return <CableReel item={item} selected={selected} onSelect={onSelect} />;
   if (generatedModelFor(item.productId)) return <GeneratedEquipment item={item} selected={selected} onSelect={onSelect} />;
   const type = prod.visual3D.type;
   const props = { item, selected, onSelect };
   let mesh: ReactNode = null;
   switch (type) {
+    case 'lining': mesh = <LiningSample {...props} />; break;
     case 'tank': mesh = <TankMesh {...props} />; break;
     case 'hoseReel': mesh = <HoseReelMesh {...props} />; break;
-    case 'compressor': mesh = <CompressorMesh {...props} />; break;
+    case 'compressor': mesh = <WorkshopCompressor {...props} />; break;
     case 'generator': mesh = <GeneratorMesh {...props} />; break;
-    case 'vacuum': mesh = <VacuumMesh {...props} />; break;
+    case 'vacuum': mesh = <WorkshopVacuum {...props} />; break;
     case 'pressureWasher': mesh = <PressureWasherMesh {...props} />; break;
     case 'frame': mesh = <FrameMesh {...props} />; break;
     case 'bottleHolder': mesh = <BottleHolderMesh {...props} />; break;
     case 'bucketHolder': mesh = <BucketHolderMesh {...props} />; break;
-    case 'set': mesh = <SetMesh {...props} />; break;
+    case 'set': mesh = <ProductSet {...props} />; break;
     default: return null;
   }
-  return <AnimatedGroup key={item.productId}>{mesh}</AnimatedGroup>;
+  return mesh;
 }

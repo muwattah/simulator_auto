@@ -1,5 +1,5 @@
-import { captureConfiguration } from '../services/configurationCapture';
-import { useState, useCallback, useMemo } from 'react';
+import { summaryImage, renderSetupImage } from '../services/renderSetupImage';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Check, Copy, MessageCircle, Phone, AlertCircle, FileText } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { company } from '../config/company';
@@ -72,6 +72,15 @@ export default function QuoteForm({ onClose }: Props) {
     message: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [preview, setPreview] = useState<{ key: string; image: string | null } | null>(null);
+  const previewKey = JSON.stringify(configuration);
+  useEffect(() => {
+    let current = true;
+    void renderSetupImage(configuration).then(image => {
+      if (current) setPreview({ key: previewKey, image });
+    });
+    return () => { current = false; };
+  }, [previewKey]);
 
   const pricing = useMemo(() => getPricing(), [getPricing, configuration]);
   const layout = useMemo(() => getLayout(), [getLayout, configuration]);
@@ -106,13 +115,14 @@ export default function QuoteForm({ onClose }: Props) {
       };
 
       const weight = buildSnapshot().estimatedWaterWeightKg;
+      const previewImageDataUrl = await summaryImage(configuration, configurationId, form.vehicleDescription.trim());
       const finalPayload = buildQuotePayload({
         configurationId,
         createdAt,
         customer: customerPayload,
         vehicleDescription: form.vehicleDescription.trim(),
         configuration,
-        previewImageDataUrl: captureConfiguration(configuration),
+        previewImageDataUrl,
         pricing,
         estimatedWaterWeightKg: weight,
         layoutWarnings: layout.warnings,
@@ -229,6 +239,14 @@ export default function QuoteForm({ onClose }: Props) {
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
           Welke bus heb je? Vertel het ons hieronder. De 3D is een algemeen voorbeeld; wij controleren de echte inbouw bij de offerte.
         </p>
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]">
+        {preview?.key === previewKey ? (preview.image ? <img src={preview.image}
+          alt="Jouw geselecteerde apparatuur samen op één installatieframe" className="w-full max-h-64 object-contain bg-[#aeb3b6]" />
+          : <p className="p-4 text-sm text-[var(--warning)]">De 3D-afbeelding kon niet worden gemaakt. De onderdelenlijst blijft beschikbaar.</p>)
+          : <p className="p-4 text-sm text-[var(--text-secondary)]" role="status">Afbeelding van jouw installatie wordt gemaakt…</p>}
+        <p className="p-3 text-xs text-[var(--text-muted)]">Je ontvangt hieronder een samenvatting en een bewaarbare afbeelding van deze selectie. Automatische e-mailverzending is nog niet actief.</p>
       </div>
 
       <div className="rounded-lg border border-[var(--accent-muted)] bg-[var(--accent-soft)] p-3">
