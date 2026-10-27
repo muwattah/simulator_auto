@@ -1,6 +1,6 @@
 import { summaryImage, renderSetupImage } from '../services/renderSetupImage';
 import QuoteTurnstile from './QuoteTurnstile';
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Check, Copy, MessageCircle, Phone, AlertCircle, FileText } from 'lucide-react';
 import { useConfiguratorStore } from '../store/configuratorStore';
 import { company } from '../config/company';
@@ -80,6 +80,8 @@ export default function QuoteForm({ onClose }: Props) {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [failedPayload, setFailedPayload] = useState<QuotePayload | null>(null);
+  const pendingAttempt = useRef<{ signature: string; payload: QuotePayload } | null>(null);
   const turnstileSiteKey = import.meta.env.VITE_QUOTE_TURNSTILE_SITE_KEY as string | undefined;
   const [preview, setPreview] = useState<{ key: string; image: string | null } | null>(null);
   const previewKey = JSON.stringify(configuration);
@@ -111,42 +113,45 @@ export default function QuoteForm({ onClose }: Props) {
     if (Object.keys(errs).length > 0) return;
 
     setSubmissionError(null);
+    setFailedPayload(null);
     if (quoteEmailConfigured && !turnstileToken) {
       setSubmissionError('Voltooi eerst de beveiligingscontrole.');
       return;
     }
     setSubmitting(true);
     try {
-      const configurationId = generateConfigurationId();
-      const createdAt = new Date().toISOString();
-      const customerPayload = {
-        name: form.name.trim(),
-        company: form.company.trim() || undefined,
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        location: form.location.trim() || undefined,
-        remarks: form.remarks.trim() || undefined,
-      };
-
-      const weight = buildSnapshot().estimatedWaterWeightKg;
-      const previewImageDataUrl = await summaryImage(configuration, configurationId, form.vehicleDescription.trim());
-      const finalPayload = buildQuotePayload({
-        configurationId,
-        createdAt,
-        customer: customerPayload,
-        vehicleDescription: form.vehicleDescription.trim(),
-        configuration,
-        previewImageDataUrl,
-        pricing,
-        estimatedWaterWeightKg: weight,
-        layoutWarnings: layout.warnings,
-        privacyConsent: form.privacyConsent,
-      });
+      // Preserve reference and exact image across retries for Resend idempotency.
+      const signature = JSON.stringify({ configuration, form });
+      let finalPayload: QuotePayload;
+      if (pendingAttempt.current?.signature === signature) {
+        finalPayload = pendingAttempt.current.payload;
+      } else {
+        const configurationId = generateConfigurationId();
+        const createdAt = new Date().toISOString();
+        const customerPayload = {
+          name: form.name.trim(),
+          company: form.company.trim() || undefined,
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          location: form.location.trim() || undefined,
+          remarks: form.remarks.trim() || undefined,
+        };
+        const weight = buildSnapshot().estimatedWaterWeightKg;
+        const previewImageDataUrl = await summaryImage(configuration, configurationId, form.vehicleDescription.trim());
+        finalPayload = buildQuotePayload({
+          configurationId, createdAt, customer: customerPayload,
+          vehicleDescription: form.vehicleDescription.trim(), configuration,
+          previewImageDataUrl, pricing, estimatedWaterWeightKg: weight,
+          layoutWarnings: layout.warnings, privacyConsent: form.privacyConsent,
+        });
+        pendingAttempt.current = { signature, payload: finalPayload };
+      }
 
       const summary = formatQuoteSummary(finalPayload);
       const submitResult = await submitQuoteRequest(finalPayload, turnstileToken, quoteEmailConfigured ? quoteEmailEndpoint : undefined);
       if (!submitResult.ok) {
         setSubmissionError(submitResult.error);
+        setFailedPayload(finalPayload);
         setTurnstileReset(value => value + 1);
         return;
       }
@@ -418,7 +423,13 @@ export default function QuoteForm({ onClose }: Props) {
         <QuoteTurnstile sitekey={turnstileSiteKey} onToken={setTurnstileToken} resetSignal={turnstileReset} />
       )}
       {submissionError && (
-        <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-300">{submissionError}</p>
+        <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-300">
+          <p>{submissionError}</p>
+          {failedPayload && <div className="flex flex-wrap gap-2">
+            <a className="btn-secondary btn-sm" download={failedPayload.configurationId + '.json'} href={'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(failedPayload, null, 2))}>Aanvraag bewaren</a>
+            {failedPayload.previewImageDataUrl && <a className="btn-secondary btn-sm" download={failedPayload.configurationId + '.jpg'} href={failedPayload.previewImageDataUrl}>Eindfoto bewaren</a>}
+          </div>}
+        </div>
       )}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <button type="submit" className="btn-primary flex-1 justify-center" disabled={submitting}>
