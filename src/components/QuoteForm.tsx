@@ -10,7 +10,6 @@ import {
   buildQuotePayload,
   formatQuoteSummary,
   submitQuoteRequest,
-  quoteEmailConfigured,
   type QuotePayload,
 } from '../services/quoteService';
 import type { Customer } from '../types';
@@ -31,6 +30,9 @@ type FormState = {
 };
 
 type FieldErrors = Partial<Record<keyof FormState, string>>;
+
+const quoteEmailEndpoint = import.meta.env.VITE_QUOTE_API_URL as string | undefined;
+const quoteEmailConfigured = Boolean(quoteEmailEndpoint && import.meta.env.VITE_QUOTE_TURNSTILE_SITE_KEY);
 
 const initialForm: FormState = {
   vehicleDescription: '',
@@ -141,7 +143,7 @@ export default function QuoteForm({ onClose }: Props) {
       });
 
       const summary = formatQuoteSummary(finalPayload);
-      const submitResult = await submitQuoteRequest(finalPayload, turnstileToken);
+      const submitResult = await submitQuoteRequest(finalPayload, turnstileToken, quoteEmailConfigured ? quoteEmailEndpoint : undefined);
       if (!submitResult.ok) {
         setSubmissionError(submitResult.error);
         setTurnstileReset(value => value + 1);
