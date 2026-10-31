@@ -1,7 +1,7 @@
 import MountingPanels from './MountingPanels';
 import { makeCheckerPlateTexture } from './surfaceMaterials';
 import { isDoorZone, mountingPanels } from '../../lib/doorMounts';
-import { useMemo, useEffect, useRef, Suspense } from 'react';
+import { useMemo, useEffect, useRef, useState, Suspense } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, useProgress, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
@@ -186,12 +186,60 @@ function SceneContent(props: Props) {
     {props.onCaptureReady && <CaptureBridge ready={props.onCaptureReady} items={props.placements} />}
   </>;
 }
+/**
+ * Chrome on iOS and Safari share WebKit but can have different GPU budgets and
+ * renderer recovery behaviour. Reduce framebuffer pressure on Chrome/iPhone,
+ * and offer an explicit retry when WebGL drops its context.
+ */
+const iosChrome = typeof navigator !== 'undefined' &&
+  /(?:CriOS|FxiOS|EdgiOS)/.test(navigator.userAgent) &&
+  /(?:iPhone|iPad|iPod)/.test(navigator.userAgent);
+
 export default function VanScene3D(props: Props) {
-  return <Canvas shadows frameloop="demand" dpr={props.presentationMode || props.productPreview ? 1 : [1, 1.5]}
-    camera={{ position: [0, 1.7, -5], fov: 40, near: 0.05, far: 80 }}
-    gl={{ antialias: true, preserveDrawingBuffer: Boolean(props.onCaptureReady), powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping }}
-    onPointerMissed={() => props.onSelectProduct(null)}
-    style={{ width: '100%', height: '100%', touchAction: 'none' }}>
-    <Suspense fallback={null}><SceneContent {...props} /></Suspense>
-  </Canvas>;
+  const [restart, setRestart] = useState(0);
+  const [contextLost, setContextLost] = useState(false);
+  const cleanup = useRef<(() => void) | null>(null);
+  useEffect(() => () => { cleanup.current?.(); cleanup.current = null; }, []);
+
+  const restartRenderer = () => {
+    cleanup.current?.();
+    cleanup.current = null;
+    setContextLost(false);
+    setRestart(value => value + 1);
+  };
+  const simple = iosChrome || contextLost;
+  return <div className="relative w-full h-full">
+    {contextLost && <div role="alert" className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--bg-secondary)]/95 p-5 text-center">
+      <p className="text-sm text-[var(--text-primary)]">De 3D-weergave is onderbroken door de browser.</p>
+      <button type="button" className="btn-primary" onClick={restartRenderer}>3D opnieuw laden</button>
+    </div>}
+    <Canvas key={restart} shadows={!simple} frameloop="demand" dpr={simple || props.presentationMode || props.productPreview ? 1 : [1, 1.5]}
+      camera={{ position: [0, 1.7, -5], fov: 40, near: 0.05, far: 80 }}
+      gl={{ antialias: !simple, preserveDrawingBuffer: Boolean(props.onCaptureReady),
+        powerPreference: simple ? 'default' : 'high-performance', toneMapping: THREE.ACESFilmicToneMapping }}
+      onCreated={({ gl }) => {
+        cleanup.current?.();
+        const canvas = gl.domElement;
+        const lost = (event: Event) => {
+          event.preventDefault();
+          setContextLost(true);
+          props.onCaptureReady?.(null);
+        };
+        const restored = () => {
+          setContextLost(false);
+          gl.setSize(canvas.clientWidth, canvas.clientHeight, false);
+          gl.getContext().viewport(0, 0, canvas.width, canvas.height);
+        };
+        canvas.addEventListener('webglcontextlost', lost);
+        canvas.addEventListener('webglcontextrestored', restored);
+        cleanup.current = () => {
+          canvas.removeEventListener('webglcontextlost', lost);
+          canvas.removeEventListener('webglcontextrestored', restored);
+        };
+      }}
+      onPointerMissed={() => props.onSelectProduct(null)}
+      style={{ width: '100%', height: '100%', touchAction: 'none' }}>
+      <Suspense fallback={null}><SceneContent {...props} /></Suspense>
+    </Canvas>
+  </div>;
 }
